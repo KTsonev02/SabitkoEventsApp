@@ -21,6 +21,7 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false);
   const {user, setUser} = useContext(AuthContext);
 
+
   const onBtnPress = () => {
     if (!email?.length || !password?.length || !fullName?.length || !profileImage) {
       ToastAndroid.show('Please fill all the fields', ToastAndroid.SHORT);
