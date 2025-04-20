@@ -20,7 +20,7 @@ const categoryOptions=[
     },
 
     {
-        name: 'Add Event',
+        name: 'Add Post',
         banner: require('@/assets/images/upcoming_events.jpg'),
         path: '/add-post',
     }

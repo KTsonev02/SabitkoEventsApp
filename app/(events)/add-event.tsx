@@ -13,114 +13,26 @@ import {
   ActivityIndicator
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import MapView, { Marker } from 'react-native-maps';
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { db } from 'configs/FirebaseConfig'; 
-import { addDoc, collection, doc, updateDoc, getDoc, Timestamp } from 'firebase/firestore';
-import { cld, options } from '@/configs/CloudinaryConfig';
 
-const LOCATIONIQ_API_KEY = 'pk.ec03b49d319c22cc4569574c50e8a04d';
 const cloudName = 'dyf8orncl';
 const uploadPreset = 'sabitko_preset';
 
 export default function EventForm() {
-  const { id } = useLocalSearchParams(); // Ако има ID, значи редактираме съществуващо събитие
+  const { id } = useLocalSearchParams();
   const [isEditing, setIsEditing] = useState(false);
-  const [title, setTitle] = useState('');
+  const [eventName, setEventName] = useState('');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [locationQuery, setLocationQuery] = useState('');
   const [location, setLocation] = useState('');
-  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [description, setDescription] = useState('');
-  const [image, setImage] = useState<string | null>(null);
+  const [link, setLink] = useState('');
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [locationLoading, setLocationLoading] = useState(false);
-  const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
+  const [email, setEmail] = useState<string>(); 
   const router = useRouter();
-
-  // Зареждане на събитие за редактиране
-  useEffect(() => {
-    if (id) {
-      const loadEvent = async () => {
-        setLoading(true);
-        try {
-          const docRef = doc(db, 'events', id as string);
-          const docSnap = await getDoc(docRef);
-          
-          if (docSnap.exists()) {
-            const eventData = docSnap.data();
-            setTitle(eventData.title);
-            setDescription(eventData.description);
-            setLocation(eventData.location);
-            setLocationQuery(eventData.location);
-            setDate(eventData.date.toDate());
-            setCoords(eventData.coords);
-            setExistingImageUrl(eventData.imageUrl);
-            setIsEditing(true);
-          } else {
-            Alert.alert('Грешка', 'Събитието не е намерено');
-            router.back();
-          }
-        } catch (error) {
-          console.error('Грешка при зареждане на събитие:', error);
-          Alert.alert('Грешка', 'Неуспешно зареждане на събитие');
-        } finally {
-          setLoading(false);
-        }
-      };
-      
-      loadEvent();
-    }
-  }, [id]);
-
-  useEffect(() => {
-    const fetchLocations = async () => {
-      if (locationQuery.length > 2) {
-        setLocationLoading(true);
-        try {
-          const response = await axios.get(
-            `https://us1.locationiq.com/v1/search`,
-            {
-              params: {
-                q: locationQuery,
-                key: LOCATIONIQ_API_KEY,
-                format: 'json',
-                addressdetails: 1,
-                limit: 5,
-                'accept-language': 'bg',
-                countrycodes: 'bg'
-              }
-            }
-          );
-          setLocationSuggestions(response.data);
-        } catch (error) {
-          console.error('Грешка при търсене на локации:', error);
-          Alert.alert('Грешка', 'Неуспешно зареждане на локации');
-        } finally {
-          setLocationLoading(false);
-        }
-      } else {
-        setLocationSuggestions([]);
-      }
-    };
-
-    const timeout = setTimeout(fetchLocations, 800);
-    return () => clearTimeout(timeout);
-  }, [locationQuery]);
-
-  const handleLocationSelect = (selectedLocation: any) => {
-    setLocation(selectedLocation.display_name);
-    setCoords({
-      latitude: parseFloat(selectedLocation.lat),
-      longitude: parseFloat(selectedLocation.lon),
-    });
-    setLocationQuery(selectedLocation.display_name);
-    setLocationSuggestions([]);
-  };
 
   const handleImagePick = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -131,14 +43,14 @@ export default function EventForm() {
     });
 
     if (!result.canceled) {
-      setImage(result.assets[0].uri);
-      setExistingImageUrl(null); // Ако изберем нова снимка, премахваме старата URL
+      setBannerUrl(result.assets[0].uri);
+      setExistingImageUrl(null);
     }
   };
 
   const validateForm = (): boolean => {
-    if (!title || (!image && !existingImageUrl) || !location || !description) {
-      Alert.alert('Грешка', 'Моля, попълнете всички задължителни полета.');
+    if (!eventName || (!bannerUrl && !existingImageUrl) || !location || !link) {
+      Alert.alert('Error', 'Please fill all required fields');
       return false;
     }
     return true;
@@ -161,7 +73,7 @@ export default function EventForm() {
       const json = await res.json();
       return json.secure_url;
     } catch (err) {
-      console.error('Грешка при качване на изображението:', err);
+      console.error('Image upload error:', err);
       throw err;
     }
   };
@@ -173,99 +85,93 @@ export default function EventForm() {
     try {
       let imageUrl = existingImageUrl;
       
-      // Ако има нова снимка, качваме я
-      if (image) {
-        imageUrl = await uploadImageToCloudinary(image);
+      if (bannerUrl) {
+        imageUrl = await uploadImageToCloudinary(bannerUrl);
       }
+
+      // Format date and time for PostgreSQL
+      const eventDate = date.toISOString().split('T')[0];
+      const eventTime = date.toTimeString().split(' ')[0];
 
       const eventData = {
-        title,
-        description,
+        eventName,
+        bannerUrl: imageUrl,
         location,
-        imageUrl,
-        date: Timestamp.fromDate(date),
-        coords,
-        updatedAt: Timestamp.now(),
+        link,
+        eventDate,
+        eventTime,
+        email
       };
 
-      if (isEditing && id) {
-        // Редактиране на съществуващо събитие
-        await updateDoc(doc(db, 'events', id as string), eventData);
-        Alert.alert('Успех', 'Събитието е обновено!');
-      } else {
-        // Създаване на ново събитие
-        await addDoc(collection(db, 'events'), {
-          ...eventData,
-          createdAt: Timestamp.now(),
-        });
-        Alert.alert('Успех', 'Събитието е създадено!');
+      // Send to your backend
+      const response = await fetch('EXPO_PUBLIC_HOST_URL/events', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(eventData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create event');
       }
-      
+
+      Alert.alert('Success', 'Event created successfully!');
       router.replace('/(tabs)/Home');
       resetForm();
     } catch (error) {
-      console.error('Грешка:', error);
-      Alert.alert('Грешка', error instanceof Error ? error.message : 'Неуспешно запазване');
+      console.error('Error:', error);
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to save event');
     } finally {
       setLoading(false);
     }
   };
 
   const resetForm = () => {
-    setTitle('');
+    setEventName('');
     setDate(new Date());
-    setLocationQuery('');
     setLocation('');
-    setCoords(null);
-    setDescription('');
-    setImage(null);
+    setLink('');
+    setBannerUrl(null);
     setExistingImageUrl(null);
   };
-
-  if (loading && isEditing) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3a0ca3" />
-      </View>
-    );
-  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.heading}>
-        {isEditing ? 'Редактирай събитие' : 'Създай ново събитие'}
+        {isEditing ? 'Edit Event' : 'Create New Event'}
       </Text>
 
-      <Text style={styles.label}>Заглавие*</Text>
+      <Text style={styles.label}>Event Name*</Text>
       <TextInput 
         style={styles.input} 
-        value={title} 
-        onChangeText={setTitle}
-        placeholder="Въведете заглавие"
+        value={eventName} 
+        onChangeText={setEventName}
+        placeholder="Enter event name"
       />
 
-      <Text style={styles.label}>Снимка*</Text>
+      <Text style={styles.label}>Banner Image*</Text>
       <TouchableOpacity style={styles.imagePicker} onPress={handleImagePick}>
-        {image ? (
-          <Image source={{ uri: image }} style={styles.imagePreview} />
+        {bannerUrl ? (
+          <Image source={{ uri: bannerUrl }} style={styles.imagePreview} />
         ) : existingImageUrl ? (
           <Image source={{ uri: existingImageUrl }} style={styles.imagePreview} />
         ) : (
-          <Text style={styles.placeholderText}>Изберете снимка</Text>
+          <Text style={styles.placeholderText}>Select image</Text>
         )}
       </TouchableOpacity>
 
-      <Text style={styles.label}>Дата*</Text>
+      <Text style={styles.label}>Date & Time*</Text>
       <TouchableOpacity 
         onPress={() => setShowDatePicker(true)} 
         style={styles.input}
       >
-        <Text>{date.toLocaleDateString('bg-BG')}</Text>
+        <Text>{date.toLocaleString()}</Text>
       </TouchableOpacity>
       {showDatePicker && (
         <DateTimePicker
           value={date}
-          mode="date"
+          mode="datetime"
           display="default"
           onChange={(_, selectedDate) => {
             setShowDatePicker(false);
@@ -274,51 +180,20 @@ export default function EventForm() {
         />
       )}
 
-      <Text style={styles.label}>Локация*</Text>
+      <Text style={styles.label}>Location*</Text>
       <TextInput
         style={styles.input}
-        value={locationQuery}
-        onChangeText={setLocationQuery}
-        placeholder="Търсене на локация..."
+        value={location}
+        onChangeText={setLocation}
+        placeholder="Enter location"
       />
-      
-      {locationLoading && <ActivityIndicator style={styles.loader} />}
 
-      {locationSuggestions.length > 0 && (
-        <View style={styles.suggestionsContainer}>
-          {locationSuggestions.map((item, index) => (
-            <TouchableOpacity
-              key={`${item.lat}-${item.lon}`}
-              style={styles.suggestionItem}
-              onPress={() => handleLocationSelect(item)}
-            >
-              <Text>{item.display_name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      {coords && (
-        <MapView
-          style={styles.map}
-          initialRegion={{
-            ...coords,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          }}
-        >
-          <Marker coordinate={coords} />
-        </MapView>
-      )}
-
-      <Text style={styles.label}>Описание*</Text>
+      <Text style={styles.label}>Link*</Text>
       <TextInput
-        style={[styles.input, styles.descriptionInput]}
-        value={description}
-        onChangeText={setDescription}
-        placeholder="Описание на събитието"
-        multiline
-        numberOfLines={4}
+        style={styles.input}
+        value={link}
+        onChangeText={setLink}
+        placeholder="Enter event link"
       />
 
       <TouchableOpacity
@@ -330,7 +205,7 @@ export default function EventForm() {
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={styles.submitButtonText}>
-            {isEditing ? 'Запази промените' : 'Добави събитие'}
+            {isEditing ? 'Save Changes' : 'Create Event'}
           </Text>
         )}
       </TouchableOpacity>
@@ -386,31 +261,6 @@ const styles = StyleSheet.create({
   placeholderText: {
     color: '#ccc',
     fontSize: 18,
-  },
-  loader: {
-    marginBottom: 10,
-  },
-  suggestionsContainer: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    maxHeight: 200,
-    marginBottom: 20,
-    overflow: 'hidden',
-  },
-  suggestionItem: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-  },
-  map: {
-    width: '100%',
-    height: 200,
-    marginBottom: 20,
-  },
-  descriptionInput: {
-    height: 100,
-    textAlignVertical: 'top',
   },
   submitButton: {
     backgroundColor: '#3a0ca3',
