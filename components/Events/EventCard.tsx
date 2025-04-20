@@ -1,152 +1,218 @@
-import { View, Text, Image, StyleSheet, Alert } from 'react-native'
-import React, { useContext } from 'react'
+import { View, Text, Image, StyleSheet, Alert, ActivityIndicator } from 'react-native'
+import React, { useContext, useState } from 'react'
 import Colors from '@/app/constants/Colors'
-import Ionicons from '@expo/vector-icons/Ionicons';
-import Button from '../Shared/Button';
-import { AuthContext } from '@/context/AuthContext';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
-import axios from 'axios';
+import Ionicons from '@expo/vector-icons/Ionicons'
+import Button from '../Shared/Button'
+import { AuthContext } from '@/context/AuthContext'
+import * as FileSystem from 'expo-file-system'
+import * as Sharing from 'expo-sharing'
+import axios from 'axios'
 
-type EVENT={
-    id: number,
-    name: string,
-    bannerurl: string,
-    location:string,
-    link: string,
-    event_date: string,
-    event_time: string,
-    createdby: string,
-    username: string,
-    isRegistered:boolean
+type EVENT = {
+    id: number
+    name: string
+    bannerurl: string
+    location: string
+    link: string
+    event_date: string
+    event_time: string
+    createdby: string
+    username: string
+    isRegistered: boolean
+    lat?: number
+    lon?: number
 }
 
-export default function EventCard(event:EVENT) {
-    const {user} = useContext(AuthContext);
+const LOCATIONIQ_API_KEY = 'pk.ec03b49d319c22cc4569574c50e8a04d' // Вашият API ключ
+
+export default function EventCard({ event }: { event: EVENT }) {
+    const { user } = useContext(AuthContext)
+    const [mapLoading, setMapLoading] = useState(true)
+    const [mapError, setMapError] = useState(false)
+
+    // Проверка дали event е дефиниран и има координати
+    const coords = {
+        lat: event?.lat ?? 42.6977,  // Стойност по подразбиране, ако lat е undefined
+        lng: event?.lon ?? 23.3219,  // Стойност по подразбиране, ако lon е undefined
+    }
+
     const RegisterForEvent = () => {
         Alert.alert(
-            'Are you sure?',
-            'Do you want to register?',
+            'Потвърждение',
+            'Желаете ли да се регистрирате за това събитие?',
             [
-                {
-                    text: 'No',
-                    onPress: () => {
-                        console.log('Cancel');
-                    },
-                    style: 'cancel'
-                },
-                {
-                    text: 'Yes',
-                    onPress: () => {
-                        SaveEventRegistration();
-                    }
-                }
+                { text: 'Не', style: 'cancel' },
+                { text: 'Да', onPress: SaveEventRegistration }
             ]
-        );
-    };
+        )
+    }
 
-    const SaveEventRegistration=async()=>{
-        const result=await axios.post(process.env.EXPO_PUBLIC_HOST_URL+'/event-register',{
-            eventId:event.id,
-            userEmail:user?.email
-        })
-        console.log(result);
-
-        if(result){
-            Alert.alert('Great!', 'Successfully registered!');
-        }
-        else{
-            Alert.alert('Error', 'Could not register. Please try again.');
+    const SaveEventRegistration = async () => {
+        try {
+            const result = await axios.post(
+                `${process.env.EXPO_PUBLIC_HOST_URL}/event-register`,
+                {
+                    eventId: event.id,
+                    userEmail: user?.email
+                }
+            )
+            
+            Alert.alert('Успех', 'Регистрацията е успешна!')
+        } catch (error) {
+            console.error('Registration error:', error)
+            Alert.alert('Грешка', 'Неуспешна регистрация. Моля, опитайте отново.')
         }
     }
     
     const shareImage = async () => {
-        try{
-            const fileUri = FileSystem.documentDirectory + 'shared-image.jpg';
+        try {
+            const fileUri = FileSystem.documentDirectory + 'shared-image.jpg'
+            const { uri } = await FileSystem.downloadAsync(event.bannerurl, fileUri)
 
-            const { uri } = await FileSystem.downloadAsync(event.bannerurl, fileUri);
-
-            if(await Sharing.isAvailableAsync()) {
+            if (await Sharing.isAvailableAsync()) {
                 await Sharing.shareAsync(uri, {
-                    dialogTitle: 'Check out this image!',
-                    mimeType: 'image/jpeg',
-                    UTI: 'public.jpeg',
-                });
+                    dialogTitle: 'Сподели събитие',
+                    mimeType: 'image/jpeg'
+                })
             } else {
-                Alert.alert('Error', 'Sharing is not available on this device.');
+                Alert.alert('Грешка', 'Функцията за споделяне не е налична')
             }
-        } catch (error){
-            console.error('Error sharing image:', error);
-            Alert.alert('Error', 'Could not share image.');
+        } catch (error) {
+            console.error('Error sharing image:', error)
+            Alert.alert('Грешка', 'Неуспешно споделяне')
         }
     }
-  return (
-    <View style={{
-        padding: 20,
-        backgroundColor: Colors.WHITE,
-        marginVertical: 10,
-        borderRadius: 25,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-        marginBottom: 30
-    }}>
-        <Image source={{uri:event.bannerurl}}
-        style={{
-            height: 260,
-            objectFit: 'contain',
-            borderRadius: 25,
-        }}/>
-        <Text style={{
-            fontSize: 20,
-            fontWeight: 'bold',
-            marginTop: 10,
-            color: '#000',
-        }}
-        >{event.name}</Text>
-        <Text style={{
-            fontSize: 15,
-            fontWeight: 'bold',
-            marginTop: 10,
-            color: Colors.GRAY,
-        }}
-        >Event By {event.username}</Text>
-        <View style={styles.subContainer}>
-        <Ionicons name="location-outline" size={24} color="black" />
-        <Text style={{color: Colors.GRAY, fontSize: 15}}>{event.location}</Text>
+
+    // Проверяваме дали има валидни координати за показване на картата
+    const isValidCoordinates = event.lat !== undefined && event.lon !== undefined;
+
+    return (
+        <View style={styles.container}>
+            <Image 
+                source={{ uri: event.bannerurl }}
+                style={styles.eventImage}
+            />
+            
+            <Text style={styles.eventName}>{event.name}</Text>
+            <Text style={styles.eventCreator}>Организатор: {event.username}</Text>
+
+            <View style={styles.detailRow}>
+                <Ionicons name="location-outline" size={20} color={Colors.PRIMARY} />
+                <Text style={styles.detailText}>{event.location}</Text>
+            </View>
+
+            {/* Карта с LocationIQ Static Map */}
+            {mapLoading ? (
+                <View style={styles.mapPlaceholder}>
+                    <ActivityIndicator size="large" color={Colors.PRIMARY} />
+                </View>
+            ) : mapError || !isValidCoordinates ? (
+                <View style={styles.mapPlaceholder}>
+                    <Text style={styles.errorText}>Картата не е налична</Text>
+                </View>
+            ) : (
+                <Image
+                    source={{ 
+                        uri: `https://maps.locationiq.com/v3/staticmap?key=${LOCATIONIQ_API_KEY}&center=${coords.lat},${coords.lng}&zoom=15&size=600x300&markers=icon:small-red-cutout|${coords.lat},${coords.lng}`
+                    }}
+                    style={styles.mapImage}
+                    onError={() => setMapError(true)}
+                />
+            )}
+
+            <View style={styles.detailRow}>
+                <Ionicons name="calendar-outline" size={20} color={Colors.PRIMARY} />
+                <Text style={styles.detailText}>
+                    {new Date(event.event_date).toLocaleDateString('bg-BG')} в {event.event_time}
+                </Text>
+            </View>
+
+            {!event.isRegistered ? (
+                <View style={styles.buttonGroup}>
+                    <Button 
+                        text="Сподели" 
+                        outline 
+                        onPress={shareImage}
+                    />
+                    <Button 
+                        text="Регистрирай се" 
+                        onPress={RegisterForEvent}
+                    />
+                </View>
+            ) : (
+                <Button 
+                    text="Отмени регистрация" 
+                    outline 
+                    onPress={() => console.log('Unregister')}
+                />
+            )}
         </View>
-        <View style={styles.subContainer}>
-        <Ionicons name="calendar-clear-outline" size={24} color="black" />
-        <Text style={{color: Colors.GRAY, fontSize: 15}}>{event.event_date} at {event.event_time}</Text>
-        </View>
-
-        {!event.isRegistered? <View style={{
-            display: 'flex',
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-
-        }}>
-        <Button text='Share' outline={true} fullWidth={true} onPress={()=> shareImage()} />
-        <Button text='Register' fullWidth={true} onPress={RegisterForEvent} />
-        </View>:
-
-        <Button text='Unregister' outline={true} onPress={()=> console.log()} />
-    }
-    </View>
-  )
+    )
 }
 
 const styles = StyleSheet.create({
-    subContainer:{
-        display: 'flex',
+    container: {
+        padding: 16,
+        backgroundColor: Colors.WHITE,
+        borderRadius: 12,
+        marginVertical: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+        elevation: 3,
+    },
+    eventImage: {
+        width: '100%',
+        height: 200,
+        borderRadius: 8,
+        marginBottom: 12,
+    },
+    eventName: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: Colors.BLACK,
+        marginBottom: 4,
+    },
+    eventCreator: {
+        fontSize: 14,
+        color: Colors.GRAY,
+        marginBottom: 12,
+    },
+    detailRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 5,
-        gap: 5
-    }
+        marginBottom: 8,
+        gap: 6,
+    },
+    detailText: {
+        fontSize: 14,
+        color: Colors.BLACK,
+    },
+    mapPlaceholder: {
+        height: 180,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: Colors.GRAY,
+        borderRadius: 8,
+        marginVertical: 12,
+    },
+    mapImage: {
+        height: 180,
+        width: '100%',
+        borderRadius: 8,
+        marginVertical: 12,
+    },
+    errorText: {
+        color: Colors.ERROR,
+    },
+    buttonGroup: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 16,
+        gap: 12,
+    },
+    button: {
+        flex: 1,
+    },
 })

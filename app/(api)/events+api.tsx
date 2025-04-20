@@ -2,8 +2,21 @@ import { client } from "@/configs/NilePostgresConfig";
 
 export async function POST(request: Request) {
 
-    const {eventName, bannerUrl, location, link, eventDate, eventTime, email}= await request.json();
+    const {eventName, bannerUrl, location, link, eventDate, eventTime, email, lat, lon}= await request.json();
+    
     await client.connect();
+
+    console.log("Получени данни: ", {
+        eventName,
+        bannerUrl,
+        location,
+        link,
+        eventDate,
+        eventTime,
+        email,
+        lat,
+        lon
+    });
 
     const result = await client.query(`
         INSERT INTO events VALUES(
@@ -15,6 +28,9 @@ export async function POST(request: Request) {
         '${eventDate}',
         '${eventTime}',
         '${email}',
+        '${lat}',
+        '${lon}',
+
         DEFAULT
         )
         `)
