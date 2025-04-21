@@ -31,6 +31,22 @@ export default function RootLayout() {
           headerShown: false
         }}
         />
+        <Stack.Screen name = "add-post/index"
+        options={{
+          headerTitle: "Add New Post"
+        }}
+        />
+          <Stack.Screen name = "(api)/explore-clubs/index"
+        options={{
+          headerTitle: "Explore Club",
+          // headerTransparent: true
+        }}
+        />
+         <Stack.Screen name = "(api)/add-event/index"
+        options={{
+          headerTitle: "Add New Event"
+        }}
+        />
         </Stack>
 
         </AuthContext.Provider>
