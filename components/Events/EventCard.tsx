@@ -1,5 +1,5 @@
 import { View, Text, Image, StyleSheet, Alert, ActivityIndicator } from 'react-native'
-import React, { useContext, useState } from 'react'
+import React, { useContext, useState, useEffect } from 'react'
 import Colors from '@/app/constants/Colors'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import Button from '../Shared/Button'
@@ -7,6 +7,7 @@ import { AuthContext } from '@/context/AuthContext'
 import * as FileSystem from 'expo-file-system'
 import * as Sharing from 'expo-sharing'
 import axios from 'axios'
+import { router } from 'expo-router'
 
 type EVENT = {
     id: number
@@ -21,20 +22,28 @@ type EVENT = {
     isRegistered: boolean
     lat?: number
     lon?: number
+    category: string
 }
 
-const LOCATIONIQ_API_KEY = 'pk.ec03b49d319c22cc4569574c50e8a04d' // Вашият API ключ
+const LOCATIONIQ_API_KEY = 'pk.ec03b49d319c22cc4569574c50e8a04d'
 
 export default function EventCard({ event }: { event: EVENT }) {
     const { user } = useContext(AuthContext)
     const [mapLoading, setMapLoading] = useState(true)
     const [mapError, setMapError] = useState(false)
 
-    // Проверка дали event е дефиниран и има координати
+    const hasValidCoords = event?.lat !== undefined && event?.lon !== undefined
     const coords = {
-        lat: event?.lat ?? 42.6977,  // Стойност по подразбиране, ако lat е undefined
-        lng: event?.lon ?? 23.3219,  // Стойност по подразбиране, ако lon е undefined
+        lat: hasValidCoords ? event.lat : 42.6977,
+        lng: hasValidCoords ? event.lon : 23.3219,
     }
+
+    useEffect(() => {
+        if (!hasValidCoords) {
+            setMapError(true)
+        }
+        setMapLoading(false)
+    }, [event])
 
     const RegisterForEvent = () => {
         Alert.alert(
@@ -48,22 +57,26 @@ export default function EventCard({ event }: { event: EVENT }) {
     }
 
     const SaveEventRegistration = async () => {
+        if (!user?.email) {
+            Alert.alert('Грешка', 'Липсва имейл на потребителя.')
+            return
+        }
+
         try {
             const result = await axios.post(
                 `${process.env.EXPO_PUBLIC_HOST_URL}/event-register`,
                 {
                     eventId: event.id,
-                    userEmail: user?.email
+                    userEmail: user.email,
                 }
             )
-            
             Alert.alert('Успех', 'Регистрацията е успешна!')
-        } catch (error) {
-            console.error('Registration error:', error)
+        } catch (error: any) {
+            console.error('Registration error:', error?.response?.data || error.message)
             Alert.alert('Грешка', 'Неуспешна регистрация. Моля, опитайте отново.')
         }
     }
-    
+
     const shareImage = async () => {
         try {
             const fileUri = FileSystem.documentDirectory + 'shared-image.jpg'
@@ -72,7 +85,7 @@ export default function EventCard({ event }: { event: EVENT }) {
             if (await Sharing.isAvailableAsync()) {
                 await Sharing.shareAsync(uri, {
                     dialogTitle: 'Сподели събитие',
-                    mimeType: 'image/jpeg'
+                    mimeType: 'image/jpeg',
                 })
             } else {
                 Alert.alert('Грешка', 'Функцията за споделяне не е налична')
@@ -83,40 +96,34 @@ export default function EventCard({ event }: { event: EVENT }) {
         }
     }
 
-    // Проверяваме дали има валидни координати за показване на картата
-    const isValidCoordinates = event.lat !== undefined && event.lon !== undefined;
+    const mapUrl = `https://maps.locationiq.com/v3/staticmap?key=${LOCATIONIQ_API_KEY}&center=${coords.lat},${coords.lng}&zoom=15&size=600x300&markers=icon:small-red-cutout|${coords.lat},${coords.lng}`
 
     return (
         <View style={styles.container}>
-            <Image 
-                source={{ uri: event.bannerurl }}
-                style={styles.eventImage}
-            />
-            
+            <Image source={{ uri: event.bannerurl }} style={styles.eventImage} />
             <Text style={styles.eventName}>{event.name}</Text>
             <Text style={styles.eventCreator}>Организатор: {event.username}</Text>
+            <Text style={styles.eventCategory}>Категория: {event.category}</Text>
 
             <View style={styles.detailRow}>
                 <Ionicons name="location-outline" size={20} color={Colors.PRIMARY} />
                 <Text style={styles.detailText}>{event.location}</Text>
             </View>
 
-            {/* Карта с LocationIQ Static Map */}
             {mapLoading ? (
                 <View style={styles.mapPlaceholder}>
                     <ActivityIndicator size="large" color={Colors.PRIMARY} />
                 </View>
-            ) : mapError || !isValidCoordinates ? (
+            ) : mapError ? (
                 <View style={styles.mapPlaceholder}>
                     <Text style={styles.errorText}>Картата не е налична</Text>
                 </View>
             ) : (
                 <Image
-                    source={{ 
-                        uri: `https://maps.locationiq.com/v3/staticmap?key=${LOCATIONIQ_API_KEY}&center=${coords.lat},${coords.lng}&zoom=15&size=600x300&markers=icon:small-red-cutout|${coords.lat},${coords.lng}`
-                    }}
+                    source={{ uri: mapUrl }}
                     style={styles.mapImage}
                     onError={() => setMapError(true)}
+                    onLoad={() => console.log("Картата е заредена успешно")}
                 />
             )}
 
@@ -127,22 +134,23 @@ export default function EventCard({ event }: { event: EVENT }) {
                 </Text>
             </View>
 
+            {user?.email === event.createdby && (
+                <Button
+                    text="Редактирай събитието"
+                    outline
+                    onPress={() => router.push(`/edit-event/${event.id}`)}
+                />
+            )}
+
             {!event.isRegistered ? (
                 <View style={styles.buttonGroup}>
-                    <Button 
-                        text="Сподели" 
-                        outline 
-                        onPress={shareImage}
-                    />
-                    <Button 
-                        text="Регистрирай се" 
-                        onPress={RegisterForEvent}
-                    />
+                    <Button text="Сподели" outline onPress={shareImage} />
+                    <Button text="Регистрирай се" onPress={RegisterForEvent} />
                 </View>
             ) : (
-                <Button 
-                    text="Отмени регистрация" 
-                    outline 
+                <Button
+                    text="Отмени регистрация"
+                    outline
                     onPress={() => console.log('Unregister')}
                 />
             )}
@@ -162,6 +170,12 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
         elevation: 3,
     },
+        eventCategory: {
+            fontSize: 14,
+            color: Colors.GRAY,
+            marginBottom: 12,
+            fontStyle: 'italic',
+        },
     eventImage: {
         width: '100%',
         height: 200,
@@ -193,7 +207,7 @@ const styles = StyleSheet.create({
         height: 180,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: Colors.GRAY,
+        backgroundColor: Colors.GRAY || '#f0f0f0',
         borderRadius: 8,
         marginVertical: 12,
     },
@@ -204,7 +218,7 @@ const styles = StyleSheet.create({
         marginVertical: 12,
     },
     errorText: {
-        color: Colors.ERROR,
+        color: Colors.ERROR || '#ff0000',
     },
     buttonGroup: {
         flexDirection: 'row',

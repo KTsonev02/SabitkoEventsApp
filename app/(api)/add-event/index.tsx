@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, Image, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, Alert, ActivityIndicator, Pressable } from 'react-native';
 import React, { useContext, useState, useEffect } from 'react';
 import Colors from '../../constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
@@ -11,6 +11,7 @@ import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { upload } from 'cloudinary-react-native';
 import { cld, options } from '@/configs/CloudinaryConfig';
+import { ScrollView } from 'react-native';
 
 export default function AddEvent() {
   const [image, setImage] = useState<string | null>(null);
@@ -27,7 +28,8 @@ export default function AddEvent() {
   const [mapPreview, setMapPreview] = useState<string | null>(null);
   const [mapLoading, setMapLoading] = useState(false);
   const router = useRouter();
-
+  const [category, setCategory] = useState('');
+  const categories = ['Music', 'Education', 'Business', 'Technology', 'Sport'];
   const LOCATIONIQ_API_KEY = 'pk.ec03b49d319c22cc4569574c50e8a04d'; // Вашият API ключ
 
   const pickImage = async () => {
@@ -94,11 +96,11 @@ export default function AddEvent() {
   }, [location]);
 
   const onSubmitBtnPress = async () => {
-    if (!eventName || !location || !link || !selectedDate || !selectedTime || !image) {
+    if (!eventName || !location || !link || !selectedDate || !selectedTime || !image || !category) {
       Alert.alert('Missing Info', 'Please fill all fields and upload image');
       return;
     }
-
+  
     try {
       upload(cld, {
         file: image,
@@ -109,9 +111,9 @@ export default function AddEvent() {
             Alert.alert('Error', 'Something went wrong while uploading image.');
             return;
           }
-
+  
           try {
-            // Получаване на координатите на локацията
+            // Получаване на координатите
             const response = await axios.get(
               `https://us1.locationiq.com/v1/search`,
               {
@@ -125,34 +127,34 @@ export default function AddEvent() {
                 }
               }
             );
-
+  
             let lat = null;
             let lon = null;
             if (response.data.length > 0) {
               lat = response.data[0]?.lat || null;
               lon = response.data[0]?.lon || null;
             }
-
-            if (!lat || !lon) {
-              Alert.alert('Error', 'Invalid location coordinates');
-              return;
-            }
-
-            // Създаване на събитието
-            const result = await axios.post(`${process.env.EXPO_PUBLIC_HOST_URL}/events`, {
-              eventName: eventName,
+  
+            // Подготвяне на данните за изпращане
+            const eventData = {
+              name: eventName,
               bannerUrl: resp.url,
               location: location,
-              lat: lat,
-              lon: lon,
               link: link,
               eventDate: moment(selectedDate).format('YYYY-MM-DD'),
               eventTime: moment(selectedTime).format('HH:mm'),
-              email: user?.email
-            });
-
-            console.log('Event Added:', result.data);
-
+              email: user?.email,
+              createdon: new Date().toISOString(), // Това трябва да се добави
+              lat: lat,
+              lon: lon,
+              category: category
+            };
+  
+            console.log('Sending event data:', eventData);
+  
+            // Създаване на събитието
+            const result = await axios.post(`${process.env.EXPO_PUBLIC_HOST_URL}/events`, eventData);
+  
             Alert.alert('Success', 'Event created successfully!', [
               {
                 text: 'OK',
@@ -170,7 +172,6 @@ export default function AddEvent() {
       Alert.alert('Error', 'An unexpected error occurred.');
     }
   };
-
   const onTimeChange = (event: any, timeValue: Date | undefined) => {
     setOpenTimePicker(false);
     if (timeValue) {
@@ -188,7 +189,10 @@ export default function AddEvent() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView 
+    contentContainerStyle={styles.container}
+    keyboardShouldPersistTaps="handled"
+  >
       <Text style={styles.title}>Add Event</Text>
 
       <TouchableOpacity onPress={pickImage}>
@@ -201,6 +205,28 @@ export default function AddEvent() {
 
       <TextInputField label="Event Name" onChangeText={setEventName} />
 
+      <Text style={styles.label}>Choose Category</Text>
+      <View style={styles.categoryContainer}>
+      {categories.map((cat) => (
+      <Pressable
+      key={cat}
+      onPress={() => setCategory(cat)}
+      style={[
+        styles.categoryButton,
+        category === cat && styles.selectedCategoryButton
+      ]}
+      >
+      <Text
+        style={[
+          styles.categoryText,
+          category === cat && styles.selectedCategoryText
+        ]}
+      >
+        {cat}
+      </Text>
+    </Pressable>
+  ))}
+</View>
       <TextInputField
         label="Location"
         onChangeText={(text) => {
@@ -243,7 +269,8 @@ export default function AddEvent() {
       )}
 
       <Button text="Submit" onPress={onSubmitBtnPress} />
-    </View>
+    </ScrollView>
+
   );
 }
 
@@ -251,12 +278,38 @@ const styles = StyleSheet.create({
   container: {
     padding: 20,
     backgroundColor: Colors.WHITE,
-    height: '100%',
   },
   title: {
     fontSize: 25,
     fontWeight: 'bold',
     marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  categoryContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  categoryButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+  },
+  selectedCategoryButton: {
+    backgroundColor: Colors.PRIMARY,
+  },
+  categoryText: {
+    color: '#333',
+  },
+  selectedCategoryText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   image: {
     width: 120,

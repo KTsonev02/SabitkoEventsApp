@@ -11,11 +11,11 @@ export async function GET (request: Response) {
 
 
 export async function POST(request: Response) {
-  const { imageUrl, clubName, about, emai } = await request.json();
+  const { imageUrl, clubName, about, email } = await request.json();
   await client.connect();
 
   const result = await client.query(
-    `insert into clubs (name, club_logo, about, createdon) values ('${clubName}', '${imageUrl}', '${about}', '${emai}')`
+    `insert into clubs (name, club_logo, about, createdon) values ('${clubName}', '${imageUrl}', '${about}', '${email}')`
   );
   
     await client.end();

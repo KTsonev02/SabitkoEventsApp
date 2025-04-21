@@ -5,6 +5,7 @@ type TextInputFieldProps = {
     label: string,
     onChangeText: (text: string) => void,
     password?:boolean
+    value?: string;
 }
 
 export default function TextInputField({label, onChangeText, password=false}: TextInputFieldProps) {
