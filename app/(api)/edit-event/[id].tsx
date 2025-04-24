@@ -35,6 +35,7 @@ export default function EditEvent() {
   const LOCATIONIQ_API_KEY = 'pk.ec03b49d319c22cc4569574c50e8a04d';
   const router = useRouter();
   const numericId = Number(id); // Преобразувай го в число
+  const [deleteEvent, setDeleteEvent] = useState<boolean>(false); 
 
   useEffect(() => {
     const fetchEventData = async () => {
@@ -227,7 +228,7 @@ export default function EditEvent() {
         Alert.alert('Success', 'Event updated successfully!', [
             {
                 text: 'OK',
-                onPress: () => router.back(),
+                onPress: () => router.replace('/Event'),
             },
         ]);
     } catch (error) {
@@ -267,6 +268,7 @@ export default function EditEvent() {
         },
       ]
     );
+
   };
 
   if (isLoading) {

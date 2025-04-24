@@ -22,6 +22,23 @@ export type EventType = {
   category: string; // Added category property
 };
 
+// Добавяме дефиниция за EventData
+export type EventData = {
+  id: string;
+  name: string;
+  bannerUrl: string;
+  location: string;
+  link: string;
+  eventDate: string;
+  eventTime: string;
+  email: string;
+  createdon: Date;
+  lat?: number;
+  lon?: number;
+  category: string;
+  isRegistered: boolean;
+};
+
 export default function Event() {
   const router = useRouter();
   const [eventList, setEventList] = useState<EventType[]>([]);
@@ -100,9 +117,20 @@ export default function Event() {
           data={eventList}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }: { item: EventType }) => {
-            const enrichedEvent = {
-              ...item,
-              isRegistered: selectedTab === 1
+            const enrichedEvent: EventData = {
+              id: item.id.toString(), // Преобразуваме ID в низ
+              name: item.name,
+              bannerUrl: item.bannerurl, // Коригираме името на свойството
+              location: item.location,
+              link: item.link,
+              eventDate: item.event_date, // Коригираме името на свойството
+              eventTime: item.event_time, // Коригираме името на свойството
+              email: item.createdby, // Присвояваме `createdby` на `email`
+              createdon: new Date(), // Добавяме фиктивна стойност за `createdon`
+              lat: item.lat,
+              lon: item.lon,
+              category: item.category,
+              isRegistered: selectedTab === 1, // Добавяме `isRegistered`
             };
             return <EventCard event={enrichedEvent} />;
           }}

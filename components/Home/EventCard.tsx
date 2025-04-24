@@ -190,9 +190,9 @@ const EventCard = ({ event }: { event: EventData }) => {
       {user?.email === event.email && (
         <TouchableOpacity
           style={styles.editButton}
-          onPress={() => router.push(`/edit-event/${event.id}`)}
+          onPress={() => router.push(`./event/${event.id}`)} // Навигиране към динамичната страница
         >
-          <Text style={styles.editButtonText}>Редактирай</Text>
+          <Text style={styles.editButtonText}>Виж детайли</Text>
         </TouchableOpacity>
       )}
     </View>
