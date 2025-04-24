@@ -34,39 +34,37 @@ export default function EditEvent() {
   const categories = ['Music', 'Education', 'Business', 'Technology', 'Sport'];
   const LOCATIONIQ_API_KEY = 'pk.ec03b49d319c22cc4569574c50e8a04d';
   const router = useRouter();
+  const numericId = Number(id); // Преобразувай го в число
 
   useEffect(() => {
     const fetchEventData = async () => {
       try {
-        const response = await axios.get(`${process.env.EXPO_PUBLIC_HOST_URL}/events`);
-        const event = response.data.find((e: any) => e.id.toString() === id);
-        
-        if (event) {
-          setEventName(event.name);
-          setLocation(event.location);
-          setLink(event.link);
-          setCategory(event.category);
-          setOriginalImage(event.bannerurl);
-          
+        const response = await axios.get(`http://192.168.0.106:8082/events?id=${id}`);
+        if (response.data && typeof response.data === 'object') {
+          const event = response.data;
+          console.log('Fetched event data:', event);
+  
+          // Задаване на всички стойности
+          setEventName(event.name || '');
+          setLocation(event.location || '');
+          setLink(event.link || '');
+          setCategory(event.category || '');
+          setOriginalImage(event.bannerurl || null);
+  
+          // Форматиране на датата и часа
           if (event.event_date) {
             const date = new Date(event.event_date);
             setSelectedDate(date);
             setDate(moment(date).format('MMMM Do YYYY'));
           }
-          
+  
           if (event.event_time) {
-            const timeParts = event.event_time.split(':');
-            const timeDate = new Date();
-            timeDate.setHours(parseInt(timeParts[0]));
-            timeDate.setMinutes(parseInt(timeParts[1]));
-            setSelectedTime(timeDate);
-            setTime(moment(timeDate).format('h:mm A'));
+            const time = new Date(`1970-01-01T${event.event_time}`);
+            setSelectedTime(time);
+            setTime(moment(time).format('h:mm A'));
           }
-          
-          if (event.lat && event.lon) {
-            const mapUrl = `https://maps.locationiq.com/v3/staticmap?key=${LOCATIONIQ_API_KEY}&center=${event.lat},${event.lon}&zoom=15&size=600x300&markers=icon:small-red-cutout|${event.lat},${event.lon}`;
-            setMapPreview(mapUrl);
-          }
+        } else {
+          throw new Error('Invalid response format');
         }
       } catch (error) {
         console.error('Failed to fetch event:', error);
@@ -75,10 +73,9 @@ export default function EditEvent() {
         setIsLoading(false);
       }
     };
-
+  
     fetchEventData();
   }, [id]);
-
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -157,82 +154,87 @@ export default function EditEvent() {
 
   const handleUpdateEvent = async () => {
     if (!eventName || !location || !link || !selectedDate || !selectedTime || !category) {
-      Alert.alert('Missing Info', 'Please fill all required fields');
-      return;
+        Alert.alert('Missing Info', 'Please fill all required fields');
+        return;
     }
 
     try {
-      let imageUrl = originalImage;
-      
-      // Upload new image if changed
-      if (image) {
-        const uploadResponse = await new Promise<any>((resolve, reject) => {
-          upload(cld, {
-            file: image,
-            options: options,
-            callback: (error, resp) => {
-              if (error) reject(error);
-              else resolve(resp);
+        let imageUrl = originalImage;
+
+        // Upload new image if changed
+        if (image) {
+            const uploadResponse = await new Promise<any>((resolve, reject) => {
+                upload(cld, {
+                    file: image,
+                    options: options,
+                    callback: (error, resp) => {
+                        if (error) reject(error);
+                        else resolve(resp);
+                    }
+                });
+            });
+
+            if (uploadResponse?.url) {
+                imageUrl = uploadResponse.url;
             }
-          });
-        });
-        
-        if (uploadResponse?.url) {
-          imageUrl = uploadResponse.url;
         }
-      }
 
-      // Get coordinates
-      let lat = null;
-      let lon = null;
-      try {
-        const response = await axios.get(
-          `https://us1.locationiq.com/v1/search`,
-          {
-            params: {
-              q: location,
-              key: LOCATIONIQ_API_KEY,
-              format: 'json',
-              limit: 1,
-              'accept-language': 'bg',
-              countrycodes: 'bg'
+        // Get coordinates
+        let lat = null;
+        let lon = null;
+        try {
+            const response = await axios.get(
+                `https://us1.locationiq.com/v1/search`,
+                {
+                    params: {
+                        q: location,
+                        key: LOCATIONIQ_API_KEY,
+                        format: 'json',
+                        limit: 1,
+                        'accept-language': 'bg',
+                        countrycodes: 'bg'
+                    }
+                }
+            );
+
+            if (response.data.length > 0) {
+                lat = response.data[0]?.lat || null;
+                lon = response.data[0]?.lon || null;
             }
-          }
-        );
-        
-        if (response.data.length > 0) {
-          lat = response.data[0]?.lat || null;
-          lon = response.data[0]?.lon || null;
+        } catch (geoError) {
+            console.error('Geocoding error:', geoError);
         }
-      } catch (geoError) {
-        console.error('Geocoding error:', geoError);
-      }
 
-      const eventData = {
-        name: eventName,
-        bannerUrl: imageUrl,
-        location: location,
-        link: link,
-        eventDate: moment(selectedDate).format('YYYY-MM-DD'),
-        eventTime: moment(selectedTime).format('HH:mm'),
-        lat: lat,
-        lon: lon,
-        category: category
-      };
+        const eventData = {
+            name: eventName,
+            bannerUrl: imageUrl,
+            location: location,
+            link: link,
+            eventDate: moment(selectedDate).format('YYYY-MM-DD'),
+            eventTime: moment(selectedTime).format('HH:mm'),
+            lat: parseFloat(lat), // Преобразуване в число
+            lon: parseFloat(lon), // Преобразуване в число
+            category: category
+        };
 
-      const result = await axios.patch(`${process.env.EXPO_PUBLIC_HOST_URL}/events?id=${id}`, eventData);
+        console.log('Event Data:', eventData);
 
-      Alert.alert('Success', 'Event updated successfully!', [
-        {
-          text: 'OK',
-          onPress: () => router.back(),
-        },
-      ]);
+        // Проверка на URL адреса
+        const patchUrl = `${process.env.EXPO_PUBLIC_HOST_URL}/events?id=${id}`;
+        console.log('PATCH URL:', patchUrl);
+
+        const result = await axios.patch(patchUrl, eventData);
+        Alert.alert('Success', 'Event updated successfully!', [
+            {
+                text: 'OK',
+                onPress: () => router.back(),
+            },
+        ]);
     } catch (error) {
-      console.error('Update error:', error);
-      Alert.alert('Error', 'Failed to update event');
+        console.error('Update error:', error);
+        Alert.alert('Error', 'Failed to update event!');
     }
-  };
+};
 
   const handleDeleteEvent = async () => {
     Alert.alert(
@@ -254,7 +256,7 @@ export default function EditEvent() {
               Alert.alert('Success', 'Event deleted successfully', [
                 {
                   text: 'OK',
-                  onPress: () => router.replace('../events'),
+                  onPress: () => router.replace('/Event'),
                 },
               ]);
             } catch (error) {

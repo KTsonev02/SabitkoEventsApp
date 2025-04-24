@@ -8,6 +8,7 @@ import * as FileSystem from 'expo-file-system'
 import * as Sharing from 'expo-sharing'
 import axios from 'axios'
 import { router } from 'expo-router'
+import { Link } from 'expo-router';
 
 type EVENT = {
     id: number
@@ -138,7 +139,16 @@ export default function EventCard({ event }: { event: EVENT }) {
                 <Button
                     text="Редактирай събитието"
                     outline
-                    onPress={() => router.push(`/edit-event/${event.id}`)}
+                    onPress={() => {
+                      if (!event.id) {
+                          console.error("❌ Event ID is missing");
+                          Alert.alert("Грешка", "Липсва ID на събитието.");
+                          return;
+                      }
+                      const editUrl = `/edit-event/${event.id}` as const;
+                      console.log("🔗 Navigating to edit-event with ID:", event.id, "URL:", editUrl);
+                      router.push(editUrl);
+                  }}
                 />
             )}
 
