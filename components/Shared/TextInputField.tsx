@@ -1,32 +1,51 @@
-import { View, Text, TextInput, StyleSheet } from 'react-native'
-import React from 'react'
+import { View, Text, TextInput, StyleSheet } from 'react-native';
+import React from 'react';
+import Colors from '@/app/constants/Colors';
 
 type TextInputFieldProps = {
-    label: string,
-    onChangeText: (text: string) => void,
-    password?:boolean
-    value?: string;
-}
+  label: string;
+  onChangeText: (text: string) => void;
+  value?: string;
+  password?: boolean;
+  placeholder?: string;
+};
 
-export default function TextInputField({label, onChangeText, password=false}: TextInputFieldProps) {
+export default function TextInputField({
+  label,
+  onChangeText,
+  value,
+  password = false,
+  placeholder,
+}: TextInputFieldProps) {
   return (
-    <View>
-        <Text>{label}</Text>
-        <TextInput placeholder={label} style={styles.textInput} 
-        secureTextEntry={password} 
-        onChangeText={onChangeText} 
-        />
+    <View style={styles.container}>
+      <Text style={styles.label}>{label}</Text>
+      <TextInput
+        style={styles.textInput}
+        secureTextEntry={password}
+        onChangeText={onChangeText}
+        value={value}
+        placeholder={placeholder || label}
+      />
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
-    textInput: {
-        padding: 15,
-        borderWidth: 1,
-        borderColor: 'gray',
-        borderRadius: 5,
-        marginTop: 5,
-        fontSize: 16,
-    }
-})
+  container: {
+    marginBottom: 15,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  textInput: {
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    fontSize: 16,
+    backgroundColor: Colors.WHITE,
+  },
+});

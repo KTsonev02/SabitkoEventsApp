@@ -26,6 +26,12 @@ export default function RootLayout() {
           headerTitle: ''
         }}
         />
+        <Stack.Screen name = "(auth)/SignIn"
+        options={{
+          headerTransparent: true,
+          headerTitle: ''
+        }}
+        />
         <Stack.Screen name = "(tabs)"
         options={{
           headerShown: false
@@ -41,6 +47,11 @@ export default function RootLayout() {
           headerTitle: "Explore Club",
           // headerTransparent: true
         }}
+        />
+        <Stack.Screen name = "event/[id]"
+        options={{
+          headerTitle: "Detail for:",
+                }}
         />
          <Stack.Screen name = "(api)/add-event/index"
         options={{

@@ -22,61 +22,63 @@ export default function SignUp() {
   const {user, setUser} = useContext(AuthContext);
 
 
-  const onBtnPress = () => {
-    if (!email?.length || !password?.length || !fullName?.length || !profileImage) {
-      ToastAndroid.show('Please fill all the fields', ToastAndroid.SHORT);
-      return;
-    }
-
-    setLoading(true);
-    createUserWithEmailAndPassword(auth, email, password)
-    .then(async (userCredential) => {
-      console.log(userCredential);
-      //Upload Profile Image
-      await upload(cld, {
-        file: profileImage,
-        options: options, 
-        callback: async(error: any, response: any) => {
-          if(error){
-            console.log(error)
-            return;
-          }
-          if (response) {
-            console.log("Cloudinary URL:", response?.url);
-  
-            try {
-              const result = await axios.post(`${process.env.EXPO_PUBLIC_HOST_URL}/user`, {
-                name: fullName,
-                email: email,
-                image: response?.url??''
-              })
-              setUser({
-                name: fullName,
-                email: email,
-                image: response?.url??''
-              })
- 
-  
-              console.log("Nile POST result:", result.data);
-  
-              // Редирект
-              router.push('/landing');
-              setLoading(false);
-
-            } catch (err) {
-              console.error("Error posting to Nile:", err);
-              setLoading(false);
+    const onBtnPress = () => {
+      // Проверяваме дали всички полета са попълнени правилно
+      if (!email || !email.includes('@') || !password || password.length < 6 || !fullName || !profileImage) {
+        ToastAndroid.show('Please fill all the fields correctly', ToastAndroid.SHORT);
+        return; // Спираме изпълнението на функцията, ако не са попълнени правилно всички полета
+      }
+    
+      setLoading(true);
+      createUserWithEmailAndPassword(auth, email, password)
+        .then(async (userCredential) => {
+          console.log(userCredential);
+          // Качване на профилно изображение в Cloudinary
+          await upload(cld, {
+            file: profileImage,
+            options: options,
+            callback: async (error: any, response: any) => {
+              if (error) {
+                console.log(error);
+                setLoading(false); // Спираме зареждането, ако има грешка
+                return;
+              }
+              if (response) {
+                console.log("Cloudinary URL:", response?.url);
+    
+                try {
+                  // Изпращаме данни за потребителя към сървъра
+                  const result = await axios.post(`${process.env.EXPO_PUBLIC_HOST_URL}/user`, {
+                    name: fullName,
+                    email: email,
+                    image: response?.url ?? ''
+                  });
+                  setUser({
+                    name: fullName,
+                    email: email,
+                    image: response?.url ?? ''
+                  });
+    
+                  console.log("POST result:", result.data);
+    
+                  // Редирект към landing страницата
+                  router.push('/landing');
+                  setLoading(false);
+    
+                } catch (err) {
+                  console.error("Error posting to server:", err);
+                  setLoading(false);
+                }
+              }
             }
-          }
-        }
-      })
-      //Save to Database
-
-  }).catch((error: any) => {
-    const errorMsg=error?.message
-    ToastAndroid.show(errorMsg, ToastAndroid.SHORT);
-  });
-  };
+          });
+        }).catch((error: any) => {
+          const errorMsg = error?.message || "Something went wrong";
+          ToastAndroid.show(errorMsg, ToastAndroid.SHORT);
+          setLoading(false); // Спираме зареждането, ако има грешка при създаване на потребителя
+        });
+    };
+  
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -92,17 +94,17 @@ export default function SignUp() {
   };
 
   return (
-    <View style={{ paddingTop: 50, padding: 20 }}>
+    <View style={{ paddingTop: 50, padding: 20, flex: 1, backgroundColor: 'white' }}>
       <Text style={{
         fontSize: 25,
         fontWeight: 'bold',
         textAlign: 'center',
-        color: '#000'
+        color: 'black',
       }}>
         Create New Account
       </Text>
 
-      <View style={{ alignItems: 'center' }}>
+      <View style={{ alignItems: 'center'}}>
         <TouchableOpacity onPress={pickImage}>
           {profileImage ? (
             <Image
@@ -127,7 +129,6 @@ export default function SignUp() {
           />
         </TouchableOpacity>
       </View>
-
       <TextInputField label='Full Name' onChangeText={(v) => setFullName(v)} />
       <TextInputField label='Email' onChangeText={(v) => setEmail(v)} />
       <TextInputField label='Password' password={true} onChangeText={(v) => setPassword(v)} />
