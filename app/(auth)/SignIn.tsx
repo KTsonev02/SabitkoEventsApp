@@ -55,8 +55,10 @@ export default function SignIn() {
 
   return (
     <View style = {{
+      flex: 1,
       padding: 20,
-      paddingTop: 50
+      paddingTop: 50,
+      backgroundColor: 'white',
     }
       
     }>
@@ -65,7 +67,7 @@ export default function SignIn() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: 30
+        marginTop: 30,
 
       }}>
         <Image source={require('./../../assets/images/logo.png')}
@@ -73,10 +75,11 @@ export default function SignIn() {
         <Text style = {{
         fontSize: 25,
         fontWeight: 'bold',
-        marginBottom: 20
+        marginBottom: 20,
+        color: 'black',
       }}>Sign In To Sabitko</Text>
 
-      </View>
+      </View >
       <TextInputField label='Email' onChangeText={(v) => setEmail(v)}/>
       <TextInputField label='Password' password={true} onChangeText={(v) => setPassword(v)}/>
 

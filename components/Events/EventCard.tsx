@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 import { collection, query, where, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/configs/FirebaseConfig';
 import Colors from '@/app/constants/Colors';
+import { useRouter } from 'expo-router'; // Импортирай навигацията
 
 // Тип за събитията (съвпада с Firestore структурата)
 type EventData = {
@@ -111,26 +112,6 @@ const EventCard = ({ event }: { event: EventData }) => {
     }
   };
 
-  // 4. Генериране на карта (ако има координати)
-  const renderMap = () => {
-    if (!event.lat || !event.lon) {
-      return (
-        <View style={styles.mapPlaceholder}>
-          <Text>Няма налична карта</Text>
-        </View>
-      );
-    }
-
-    const mapUrl = `https://maps.locationiq.com/v3/staticmap?key=pk.ec03b49d319c22cc4569574c50e8a04d&center=${event.lat},${event.lon}&zoom=15&size=600x300&markers=icon:small-red-cutout|${event.lat},${event.lon}`;
-    
-    return (
-      <Image
-        source={{ uri: mapUrl }}
-        style={styles.mapImage}
-        onError={() => console.log('Грешка при зареждане на карта')}
-      />
-    );
-  };
 
   return (
     <View style={styles.container}>
@@ -156,8 +137,6 @@ const EventCard = ({ event }: { event: EventData }) => {
         <Text style={styles.detailText}>{event.location}</Text>
       </View>
 
-      {/* Карта */}
-      {renderMap()}
 
       {/* Бутони */}
       <View style={styles.buttonsContainer}>
@@ -216,87 +195,68 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 180,
     borderRadius: 8,
-    marginBottom: 12,
   },
   title: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 5,
+    marginTop: 10,
   },
   organizer: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 5,
+    color: 'gray',
+    marginTop: 5,
   },
   category: {
     fontSize: 14,
-    color: Colors.PRIMARY,
-    marginBottom: 10,
-    fontStyle: 'italic',
+    color: 'gray',
+    marginTop: 5,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginTop: 5,
   },
   detailText: {
     marginLeft: 5,
-    fontSize: 14,
-  },
-  mapPlaceholder: {
-    height: 150,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    marginVertical: 10,
-  },
-  mapImage: {
-    height: 150,
-    width: '100%',
-    borderRadius: 8,
-    marginVertical: 10,
   },
   buttonsContainer: {
+    marginTop: 15,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 15,
   },
   button: {
-    padding: 10,
-    borderRadius: 5,
-    alignItems: 'center',
     flex: 1,
-    marginHorizontal: 5,
+    padding: 12,
+    borderRadius: 8,
+    margin: 5,
   },
   shareButton: {
-    backgroundColor: '#f0f0f0',
-    borderWidth: 1,
-    borderColor: Colors.PRIMARY,
+    backgroundColor: Colors.GRAY,
   },
   shareButtonText: {
-    color: Colors.PRIMARY,
+    textAlign: 'center',
+    color: '#333',
   },
   registerButton: {
     backgroundColor: Colors.PRIMARY,
   },
   unregisterButton: {
-    backgroundColor: '#ff4444',
+    backgroundColor: Colors.SECONDARY,
   },
   registerButtonText: {
+    textAlign: 'center',
     color: '#fff',
-    fontWeight: 'bold',
   },
   editButton: {
-    marginTop: 10,
+    marginTop: 20,
+    backgroundColor: '#007BFF',
+    borderRadius: 8,
     padding: 10,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 5,
-    alignItems: 'center',
   },
   editButtonText: {
-    color: Colors.PRIMARY,
+    textAlign: 'center',
+    color: '#fff',
   },
 });
 
-export default React.memo(EventCard);
+export default EventCard;

@@ -10,7 +10,7 @@ export default function LandingScreen() {
         <Image source={require('./../assets/images/events.jpg')} 
             style={{
                 width: '100%',
-                height: 480           
+                height: 420           
             }}
         />
         <View style={{
@@ -39,7 +39,7 @@ export default function LandingScreen() {
             alignItems: 'center',
         }}>
            <Pressable onPress={() => router.push('/(auth)/SignIn')}>
-                <Text style={{ color: 'white', fontSize: 10 }}>Already have an Account? Sign in Here!</Text>
+                <Text style={{ color: 'white', fontSize: 15, }}>Already have an Account? Sign in Here!</Text>
             </Pressable>
         </View>
     </View>

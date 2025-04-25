@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View, ActivityIndicator, Alert, ScrollView, Button, Image } from 'react-native';
+import { Text, View, ActivityIndicator, Alert, ScrollView, Button, Image, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import axios from 'axios';
 import Colors from '@/app/constants/Colors';
@@ -45,6 +45,28 @@ export default function EventDetails() {
 
         fetchEvent();
     }, [id]);
+
+    // 4. Генериране на карта (ако има координати)
+      const renderMap = () => {
+        if (!event.lat || !event.lon) {
+          return (
+            <View style={styles.mapPlaceholder}>
+              <Text>Няма налична карта</Text>
+            </View>
+          );
+        }
+    
+        const mapUrl = `https://maps.locationiq.com/v3/staticmap?key=pk.ec03b49d319c22cc4569574c50e8a04d&center=${event.lat},${event.lon}&zoom=15&size=600x300&markers=icon:small-red-cutout|${event.lat},${event.lon}`;
+        
+        return (
+          <Image
+            source={{ uri: mapUrl }}
+            style={styles.mapImage}
+            onError={() => console.log('Грешка при зареждане на карта')}
+          />
+        );
+      };
+    
 
     const handleDeleteEvent = async () => {
         Alert.alert(
@@ -102,6 +124,8 @@ export default function EventDetails() {
 
 
             <EventCard event={event} />
+             {/* Карта */}
+            {renderMap()}
 
             <View style={{ marginTop: 20 }}>
                 <Button
@@ -120,3 +144,21 @@ export default function EventDetails() {
         </ScrollView>
     );
 }
+
+
+const styles = StyleSheet.create({
+mapPlaceholder: {
+    height: 150,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    marginVertical: 10,
+  },
+  mapImage: {
+    height: 150,
+    width: '100%',
+    borderRadius: 8,
+    marginVertical: 10,
+  },
+});

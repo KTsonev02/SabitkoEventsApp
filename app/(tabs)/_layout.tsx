@@ -8,11 +8,12 @@ import { AuthContext } from '@/context/AuthContext';
 export default function TabLayout() {
   const {user}=useContext(AuthContext);
   return (
-    <Tabs
-    screenOptions={{
-      tabBarActiveTintColor: '#4C0099',
-      headerShown: false
-    }}>
+    <View style={{ flex: 1}}>
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: '#4C0099',
+          headerShown: false,
+        }}>
         <Tabs.Screen name = 'Home'
         options={{
           tabBarIcon: ({ color, size }) => <Ionicons name="home" size={28} color={color} />
@@ -29,14 +30,14 @@ export default function TabLayout() {
          options={{
           tabBarIcon: ({ color, size }) => <Image source={{uri:user?.image}}
           style={{
-            width:size,
-            height:size,
+            width:'100%',
+            height:"100%",  
             borderRadius:99
           }}
             />
   
         }}/>
-
-    </Tabs>
+      </Tabs>
+    </View>
   )
 }

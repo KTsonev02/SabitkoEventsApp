@@ -40,7 +40,7 @@ export default function EditEvent() {
   useEffect(() => {
     const fetchEventData = async () => {
       try {
-        const response = await axios.get(`http://192.168.0.106:8082/events?id=${id}`);
+        const response = await axios.get(`${process.env.EXPO_PUBLIC_HOST_URL}/events?id=${id}`);
         if (response.data && typeof response.data === 'object') {
           const event = response.data;
           console.log('Fetched event data:', event);
