@@ -7,6 +7,7 @@ interface USER {
   name: string,
   email: string,
   image: string,
+  
 }
 
 export default function RootLayout() {

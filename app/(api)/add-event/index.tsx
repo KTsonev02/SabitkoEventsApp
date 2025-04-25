@@ -4,7 +4,6 @@ import Colors from '../../constants/Colors';
 import * as ImagePicker from 'expo-image-picker';
 import TextInputField from '@/components/Shared/TextInputField';
 import { AuthContext } from '@/context/AuthContext';
-import RNDateTimePicker from '@react-native-community/datetimepicker';
 import Button from '@/components/Shared/Button';
 import moment from 'moment';
 import axios from 'axios';
@@ -12,6 +11,7 @@ import { useRouter } from 'expo-router';
 import { upload } from 'cloudinary-react-native';
 import { cld, options } from '@/configs/CloudinaryConfig';
 import { ScrollView } from 'react-native';
+import RNDateTimePicker from '@react-native-community/datetimepicker';
 
 export default function AddEvent() {
   const [image, setImage] = useState<string | null>(null);

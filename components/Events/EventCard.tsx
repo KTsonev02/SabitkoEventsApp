@@ -26,7 +26,7 @@ type EventData = {
   category: string;
 };
 
-const EventCard = ({ event }: { event: EventData }) => {
+const EventCard = ({ event, hideDetailsButton = false }: { event: EventData; hideDetailsButton?: boolean }) => {
     const { user } = useContext(AuthContext);
     const [isRegistered, setIsRegistered] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -166,11 +166,11 @@ const EventCard = ({ event }: { event: EventData }) => {
       </View>
 
       {/* Бутон за редакция (ако потребителят е организатор) */}
-      {user?.email === event.email && (
+      {!hideDetailsButton && (
         <TouchableOpacity
           style={styles.editButton}
           onPress={() => router.push(`../event/${event.id}`)} // Навигиране към динамичната страница
-        >
+        > 
           <Text style={styles.editButtonText}>Виж детайли</Text>
         </TouchableOpacity>
       )}
