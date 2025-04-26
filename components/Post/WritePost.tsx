@@ -1,6 +1,5 @@
-import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, ToastAndroid, ScrollView } from 'react-native'
-import React, { useContext, useState, useEffect } from 'react'
-import DropDownPicker from 'react-native-dropdown-picker'
+import { View, TextInput, StyleSheet, Image, TouchableOpacity, ToastAndroid, ScrollView } from 'react-native'
+import React, { useContext, useState } from 'react'
 import * as ImagePicker from 'expo-image-picker'
 import { cld, options } from '@/configs/CloudinaryConfig'
 import { upload } from 'cloudinary-react-native'
@@ -10,55 +9,24 @@ import Button from '../Shared/Button'
 import { useRouter } from 'expo-router'
 
 export default function WritePost() {
-    const [open, setOpen] = useState(false)
-    const [value, setValue] = useState(null)
-    const [content, setContent] = useState<string|null>()
+    const [content, setContent] = useState<string | null>(null)
     const [selectedImage, setSelectedImage] = useState<string | undefined>(undefined)
-    const {user} = useContext(AuthContext)
+    const { user } = useContext(AuthContext)
     const [loading, setLoading] = useState(false)
-    const [clubsLoading, setClubsLoading] = useState(false)
-    const [items, setItems] = useState([
-        {label: 'Public', value: 0}
-    ])
     const route = useRouter()
 
-    useEffect(() => {
-        if (user?.email) {
-            GetUserFollowedClubs()
-        }
-    }, [user?.email])
-
-    const GetUserFollowedClubs = async() => {
-        setClubsLoading(true)
-        try {
-            const result = await axios.get(
-                `${process.env.EXPO_PUBLIC_HOST_URL}/clubfollower?u_email=${user?.email}`
-            )
-            const clubsData = result.data?.map((club: any) => ({
-                label: club?.name || `Club ${club.club_id}`,
-                value: club.club_id.toString()
-            }))
-            setItems(prev => [...prev, ...clubsData])
-        } catch (error) {
-            console.error("Failed to load followed clubs:", error)
-            ToastAndroid.show('Failed to load clubs', ToastAndroid.SHORT)
-        } finally {
-            setClubsLoading(false)
-        }
-    }
-
     const onPostBtnClick = async () => {
-        if(!content){
+        if (!content) {
             ToastAndroid.show('Please enter content', ToastAndroid.SHORT)
             return
         }
-        
+
         setLoading(true)
-        
+
         try {
             let uploadImageUrl = ''
-            if(selectedImage) {
-                const resultData: any = await new Promise(async(resolve, reject) => {
+            if (selectedImage) {
+                const resultData: any = await new Promise(async (resolve, reject) => {
                     await upload(cld, {
                         file: selectedImage,
                         options: options,
@@ -73,11 +41,11 @@ export default function WritePost() {
 
             await axios.post(`${process.env.EXPO_PUBLIC_HOST_URL}/post`, {
                 content: content,
-                imageUrl: uploadImageUrl,
-                visibleIn: value,
+                imageUrl: uploadImageUrl, // ако няма изображение, URL ще е празно
+                visibleIn: 0, // винаги Public
                 email: user?.email
             })
-            
+
             route.replace('/(tabs)/Home')
         } catch (error) {
             console.error("Post creation failed:", error)
@@ -94,7 +62,7 @@ export default function WritePost() {
             aspect: [4, 4],
             quality: 0.5,
         })
-        
+
         if (!result.canceled) {
             setSelectedImage(result.assets[0].uri)
         }
@@ -102,7 +70,7 @@ export default function WritePost() {
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
-            <TextInput 
+            <TextInput
                 placeholder='Write your post here...'
                 style={styles.textInput}
                 multiline={true}
@@ -110,36 +78,20 @@ export default function WritePost() {
                 maxLength={1000}
                 onChangeText={setContent}
             />
-            
+
             <TouchableOpacity onPress={pickImage} style={styles.imageContainer}>
-                {selectedImage ? 
-                    <Image source={{uri: selectedImage}} style={styles.image} /> :
-                    <Image 
-                        source={require('../../assets/images/upload_image.jpg')} 
-                        style={styles.image} 
+                {selectedImage ?
+                    <Image source={{ uri: selectedImage }} style={styles.image} /> :
+                    <Image
+                        source={require('../../assets/images/upload_image.jpg')}
+                        style={[styles.image, styles.placeholderImage]} // Добавено място за по-голям placeholder
                     />
                 }
             </TouchableOpacity>
 
-            <View style={styles.dropdownContainer}>
-                <DropDownPicker 
-                    open={open}
-                    value={value}
-                    items={items}
-                    setOpen={setOpen}
-                    setValue={setValue}
-                    setItems={setItems}
-                    loading={clubsLoading}
-                    placeholder="Select visibility"
-                    style={styles.dropdown}
-                    dropDownContainerStyle={styles.dropdownMenu}
-                    listMode="SCROLLVIEW"
-                />
-            </View>
-            
             <View style={styles.buttonContainer}>
-                <Button 
-                    text='Add Post' 
+                <Button
+                    text='Add Post'
                     onPress={onPostBtnClick}
                     loading={loading}
                 />
@@ -181,22 +133,9 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#ddd',
     },
-    dropdownContainer: {
-        marginBottom: 30,
-        zIndex: 1000,
-    },
-    dropdown: {
-        backgroundColor: 'white',
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 10,
-    },
-    dropdownMenu: {
-        backgroundColor: 'white',
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 10,
-        marginTop: 5,
+    placeholderImage: {
+        width: 180, // Увеличаваме placeholder-а, за да изглежда по-добре
+        height: 180,
     },
     buttonContainer: {
         marginTop: 10,

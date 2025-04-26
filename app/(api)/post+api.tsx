@@ -1,4 +1,5 @@
 import { client } from "@/configs/NilePostgresConfig";
+import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
     const {content, imageUrl, visibleIn, email} = await request.json();
@@ -13,16 +14,71 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-    const club = new URL(request.url).searchParams.get('club');
-    const orderField = new URL(request.url).searchParams.get('orderField');
+    try {
+        const url = new URL(request.url);
+        const id = url.searchParams.get('id');
+        const club = url.searchParams.get('club');
+        const orderField = url.searchParams.get('orderField') || 'createdon'; // по подразбиране подреждаме по дата
 
-    await client.connect();
-    const result= await client.query(`select * from post 
-                                    inner join users
-                                    on post.createdby=users.email
-                                    where club in (${club}) order by ${orderField} desc;`)
-    await client.end();
-    
+        await client.connect();
 
-    return Response.json(result.rows);
+        let query = `
+            SELECT post.*, users.name as username, users.image as userprofileimage
+            FROM post
+            INNER JOIN users ON post.createdby = users.email
+        `;
+
+        // Строим динамично WHERE частта
+        let conditions: string[] = [];
+        if (id) {
+            conditions.push(`post.id = ${id}`);
+        }
+        if (club) {
+            conditions.push(`club IN (${club})`);
+        }
+
+        if (conditions.length > 0) {
+            query += ` WHERE ` + conditions.join(' AND ');
+        }
+
+        query += ` ORDER BY ${orderField} DESC`;
+
+        const result = await client.query(query);
+        await client.end();
+
+        return new NextResponse(JSON.stringify(result.rows), { status: 200 });
+
+    } catch (error) {
+        console.error('❌ GET Error:', error);
+        await client.end();
+        return new NextResponse('Failed to fetch posts', { status: 500 });
+    }
+}
+
+export async function DELETE(request: Request) {
+    try {
+        const url = new URL(request.url);
+        const id = url.searchParams.get('id');
+
+        if (!id) {
+            return new NextResponse('Post ID е задължителен', { status: 400 });
+        }
+
+        await client.connect();
+
+        const result = await client.query(`DELETE FROM post WHERE id = ${id};`);
+
+        await client.end();
+
+        if (result.rowCount === 0) {
+            return new NextResponse('Не е намерен пост с такова ID', { status: 404 });
+        }
+
+        return new NextResponse('Постът е успешно изтрит', { status: 200 });
+
+    } catch (error) {
+        console.error('❌ DELETE Error:', error);
+        await client.end();
+        return new NextResponse('Неуспешно изтриване на пост', { status: 500 });
+    }
 }

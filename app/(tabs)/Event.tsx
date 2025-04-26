@@ -20,7 +20,7 @@ export default function Event() {
   const { user } = useContext(AuthContext);
   const [categories, setCategories] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
-  const [searchVisible, setSearchVisible] = useState(true);
+  const [searchVisible, setSearchVisible] = useState(false);
   const [userRole, setUserRole] = useState('');
 
   const [startDate, setStartDate] = useState<Date | null>(null);
