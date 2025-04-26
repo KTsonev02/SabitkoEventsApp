@@ -7,7 +7,7 @@ import EventCard from '@/components/Events/EventCard';
 import Colors from '../constants/Colors';
 import { AuthContext } from '@/context/AuthContext';
 import DropDownPicker from 'react-native-dropdown-picker';
-
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
 export default function Event() {
   const router = useRouter();
@@ -15,7 +15,6 @@ export default function Event() {
   const [filteredEvents, setFilteredEvents] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryQuery, setCategoryQuery] = useState('');
-  const [dateQuery, setDateQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState(0);
   const [loading, setLoading] = useState(false);
   const { user } = useContext(AuthContext);
@@ -23,7 +22,11 @@ export default function Event() {
   const [open, setOpen] = useState(false);
   const [searchVisible, setSearchVisible] = useState(true);
   const [userRole, setUserRole] = useState('');
-  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [isStartDatePickerVisible, setStartDatePickerVisibility] = useState(false);
+  const [isEndDatePickerVisible, setEndDatePickerVisibility] = useState(false);
 
   useEffect(() => {
     const checkUserRole = async () => {
@@ -53,13 +56,16 @@ export default function Event() {
     const uniqueCategories = [...new Set(eventList.map(event => event.category || 'General'))];
     setCategories(uniqueCategories);
 
-    const filtered = eventList.filter((event) =>
-      event.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      event.category.toLowerCase().includes(categoryQuery.toLowerCase()) &&
-      event.event_date.includes(dateQuery)
-    );
+    const filtered = eventList.filter((event) => {
+      const matchesName = event.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = event.category.toLowerCase().includes(categoryQuery.toLowerCase());
+      const eventDate = new Date(event.event_date);
+      const matchesDate = (!startDate || eventDate >= startDate) && (!endDate || eventDate <= endDate);
+      return matchesName && matchesCategory && matchesDate;
+    });
+
     setFilteredEvents(filtered);
-  }, [searchQuery, categoryQuery, dateQuery, eventList]);
+  }, [searchQuery, categoryQuery, startDate, endDate, eventList]);
 
   const GetAllEvents = async () => {
     setLoading(true);
@@ -96,101 +102,96 @@ export default function Event() {
   const clearFilters = () => {
     setSearchQuery('');
     setCategoryQuery('');
-    setDateQuery('');
+    setStartDate(null);
+    setEndDate(null);
   };
 
-  const showDatePicker = () => {
-    setDatePickerVisibility(true);
+  const showStartDatePicker = () => setStartDatePickerVisibility(true);
+  const showEndDatePicker = () => setEndDatePickerVisibility(true);
+  const hideStartDatePicker = () => setStartDatePickerVisibility(false);
+  const hideEndDatePicker = () => setEndDatePickerVisibility(false);
+
+  const handleConfirmStartDate = (date: Date) => {
+    setStartDate(date);
+    hideStartDatePicker();
   };
 
-  const hideDatePicker = () => {
-    setDatePickerVisibility(false);
-  };
-
-  const handleConfirm = (date: Date) => {
-    const formatted = date.toISOString().split('T')[0];
-    setDateQuery(formatted);
-    hideDatePicker();
+  const handleConfirmEndDate = (date: Date) => {
+    setEndDate(date);
+    hideEndDatePicker();
   };
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={{ flex: 1 }}>
           <View style={styles.header}>
             <Text style={styles.title}>Events</Text>
             {(userRole === 'organizer' || userRole === 'admin') && (
-              <Button text='  +  ' onPress={() => router.push('/add-event')} />
+              <Button text="  +  " onPress={() => router.push('/add-event')} />
             )}
           </View>
 
           <Pressable onPress={() => setSearchVisible(!searchVisible)}>
             <Text style={styles.toggleSearchButton}>
-              {searchVisible ? 'Скрий търсачката' : 'Покажи търсачката'}
+              {searchVisible ? 'Hide Search bar' : 'Show Search bar'}
             </Text>
           </Pressable>
 
           {searchVisible && (
-            <>
+            <View style={styles.filtersContainer}>
               <TextInput
-                placeholder="Търсене на събитие по име"
+                placeholder="Search by name"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                style={styles.searchInput}
+                style={styles.inputSmall}
               />
-
-              <DropDownPicker 
-                style={{width: "90%"}}
-                placeholder="Търсене по категория"
+              <DropDownPicker
+                placeholder="Category"
                 open={open}
                 value={categoryQuery}
-                items={categories.map(category => ({ label: category, value: category }))}
+                items={categories.map((c) => ({ label: c, value: c }))}
                 setOpen={setOpen}
                 setValue={setCategoryQuery}
-                containerStyle={styles.dropdown}
-                listItemContainerStyle={styles.dropdownList}
+                style={styles.dropdownSmall}
+                containerStyle={{ width: '48%' }}
               />
-
               <View style={styles.dateRow}>
-                <Pressable onPress={showDatePicker} style={styles.dateButton}>
+                <Pressable onPress={showStartDatePicker} style={styles.dateButton}>
                   <Text style={styles.dateButtonText}>
-                    {dateQuery ? `Дата: ${dateQuery}` : 'Избери дата'}
+                    {startDate ? `From: ${startDate.toISOString().split('T')[0]}` : 'From Date'}
                   </Text>
                 </Pressable>
-                {dateQuery !== '' && (
-                  <Pressable onPress={() => setDateQuery('')}>
-                    <Text style={styles.clearDateText}>✕</Text>
-                  </Pressable>
-                )}
+                <Pressable onPress={showEndDatePicker} style={styles.dateButton}>
+                  <Text style={styles.dateButtonText}>
+                    {endDate ? `To: ${endDate.toISOString().split('T')[0]}` : 'To Date'}
+                  </Text>
+                </Pressable>
               </View>
-
-              {/* <DateTimePickerModal
-            isVisible={isDatePickerVisible}
-            mode="date"
-            onConfirm={handleConfirm}
-            onCancel={hideDatePicker}
-            /> */}
               <Pressable onPress={clearFilters} style={styles.clearButton}>
-                <Text style={styles.clearButtonText}>Изчисти филтрите</Text>
+                <Text style={styles.clearButtonText}>Clear</Text>
               </Pressable>
-            </>
+              <DateTimePickerModal
+                isVisible={isStartDatePickerVisible}
+                mode="date"
+                onConfirm={handleConfirmStartDate}
+                onCancel={hideStartDatePicker}
+              />
+              <DateTimePickerModal
+                isVisible={isEndDatePickerVisible}
+                mode="date"
+                onConfirm={handleConfirmEndDate}
+                onCancel={hideEndDatePicker}
+              />
+            </View>
           )}
 
           <View style={styles.tabContainer}>
             <Pressable onPress={() => setSelectedTab(0)}>
-              <Text style={[styles.tabtext, { 
-                backgroundColor: selectedTab === 0 ? Colors.PRIMARY : Colors.WHITE, 
-                color: selectedTab === 0 ? Colors.WHITE : Colors.PRIMARY 
-              }]}>Upcoming</Text>
+              <Text style={[styles.tabText, selectedTab === 0 && styles.activeTab]}>Upcoming</Text>
             </Pressable>
             <Pressable onPress={() => setSelectedTab(1)}>
-              <Text style={[styles.tabtext, { 
-                backgroundColor: selectedTab === 1 ? Colors.PRIMARY : Colors.WHITE, 
-                color: selectedTab === 1 ? Colors.WHITE : Colors.PRIMARY 
-              }]}>Registered</Text>
+              <Text style={[styles.tabText, selectedTab === 1 && styles.activeTab]}>Registered</Text>
             </Pressable>
           </View>
 
@@ -198,7 +199,7 @@ export default function Event() {
             <ActivityIndicator size="large" color={Colors.PRIMARY} style={{ marginTop: 50 }} />
           ) : (
             <FlatList
-              data={filteredEvents} 
+              data={filteredEvents}
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => {
                 const enrichedEvent = {
@@ -213,7 +214,7 @@ export default function Event() {
                 };
                 return <EventCard event={enrichedEvent} />;
               }}
-              contentContainerStyle={{ paddingBottom: 100 }} 
+              contentContainerStyle={{ paddingBottom: 100 }}
             />
           )}
         </View>
@@ -230,70 +231,70 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: { fontSize: 30, fontWeight: 'bold' },
+  toggleSearchButton: {
+    paddingLeft: 25,
+    marginBottom: 5,
+    color: Colors.PRIMARY,
+    fontSize: 16,
+  },
+  filtersContainer: {
+    marginHorizontal: 20,
+    marginBottom: 10,
+    gap: 10,
+  },
+  inputSmall: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 10,
+  },
+  dropdownSmall: {
+    borderColor: '#ccc',
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  dateButton: {
+    flex: 1,
+    padding: 10,
+    backgroundColor: Colors.GRAY,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  dateButtonText: {
+    fontSize: 14,
+    color: Colors.BLACK,
+  },
+  clearButton: {
+    backgroundColor: Colors.RED,
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  clearButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
   tabContainer: {
     flexDirection: 'row',
     gap: 20,
     padding: 15,
     paddingHorizontal: 30,
   },
-  tabtext: {
-    padding: 4,
-    fontSize: 20,
+  tabText: {
+    padding: 6,
+    fontSize: 18,
     paddingHorizontal: 15,
     borderRadius: 99,
-  },
-  searchInput: {
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    margin: 20,
-  },
-  dropdown: {
-    marginBottom: 20,
-    marginHorizontal: 20,
-  },
-  dropdownList: {
-    backgroundColor: '#fff',
-    maxHeight: 200,
-  },
-  toggleSearchButton: {
-    paddingLeft: 25,
-    marginBottom: 5,
     color: Colors.PRIMARY,
-    fontSize: 16,
-    fontWeight: 'bold',
+    backgroundColor: Colors.WHITE,
   },
-  clearButton: {
-    alignSelf: 'center',
-    backgroundColor: '#eee',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  clearButtonText: {
-    color: Colors.PRIMARY,
-    fontWeight: 'bold',
-  },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 20,
-    marginBottom: 15,
-  },
-  dateButton: {
-    backgroundColor: '#f0f0f0',
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 8,
-  },
-  dateButtonText: {
-    color: Colors.PRIMARY,
-    fontWeight: 'bold',
-  },
-  clearDateText: {
-    marginLeft: 10,
-    fontSize: 20,
-    color: '#888',
+  activeTab: {
+    backgroundColor: Colors.PRIMARY,
+    color: Colors.WHITE,
   },
 });
