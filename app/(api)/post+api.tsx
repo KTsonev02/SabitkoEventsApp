@@ -1,18 +1,67 @@
 import { client } from "@/configs/NilePostgresConfig";
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+
 
 export async function POST(request: Request) {
-    const {content, imageUrl, visibleIn, email} = await request.json();
+    const { action, postId, content, imageUrl, visibleIn, email } = await request.json();
 
     await client.connect();
-    const result= await client.query(`insert into post
-         values(DEFAULT, '${content}', '${imageUrl}', DEFAULT, '${email}', ${visibleIn});`);
+
+    if (action === "like") {
+        const alreadyLiked = await client.query(`
+            SELECT * FROM likes
+            WHERE post_id = '${postId}' AND user_id = '${email}'
+        `);
+
+        if (alreadyLiked.rows.length === 0) {
+            // Потребителят още НЕ е лайкнал → позволяваме лайк
+            await client.query(`
+                INSERT INTO likes (post_id, user_id, createdon)
+                VALUES ('${postId}', '${email}', CURRENT_TIMESTAMP)
+            `);
+
+            await client.query(`
+                UPDATE post
+                SET likes_count = COALESCE(likes_count, 0) + 1
+                WHERE id = '${postId}'
+            `);
+        } else {
+            console.log("Потребителят вече е лайкнал този пост");
+        }
+
+    } else if (action === "unlike") {
+        const alreadyLiked = await client.query(`
+            SELECT * FROM likes
+            WHERE post_id = '${postId}' AND user_id = '${email}'
+        `);
+
+        if (alreadyLiked.rows.length > 0) {
+            // Потребителят е лайкнал → позволяваме анлайк
+            await client.query(`
+                DELETE FROM likes
+                WHERE post_id = '${postId}' AND user_id = '${email}'
+            `);
+
+            await client.query(`
+                UPDATE post
+                SET likes_count = GREATEST(COALESCE(likes_count, 0) - 1, 0)
+                WHERE id = '${postId}'
+            `);
+        } else {
+            console.log("Потребителят не е лайкнал този пост, за да го анлайкне");
+        }
+
+    } else {
+        // Създаване на нов пост
+        await client.query(`
+            INSERT INTO post (id, content, imageurl, createdon, createdby, club)
+            VALUES (DEFAULT, '${content}', '${imageUrl}', DEFAULT, '${email}', ${visibleIn});
+        `);
+    }
+
     await client.end();
-    
-
-    return Response.json(result);
+    return new NextResponse('Успешно', { status: 200 });
 }
-
 export async function GET(request: Request) {
     try {
         const url = new URL(request.url);
@@ -28,7 +77,6 @@ export async function GET(request: Request) {
             INNER JOIN users ON post.createdby = users.email
         `;
 
-        // Строим динамично WHERE частта
         let conditions: string[] = [];
         if (id) {
             conditions.push(`post.id = ${id}`);
