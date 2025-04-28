@@ -14,13 +14,18 @@ const profileOptions=[
     icon: "add-circle-outline"
   },
   {
-    name: 'My Events',
+    name: 'Events',
     path: '/Event',
     icon: "calendar-number-outline"
   },
   {
     name: 'Log Out',
     path: 'logout',
+    icon: "log-out-outline"
+  },
+  {
+    name: 'My Tickets',
+    path: '/Tickets',
     icon: "log-out-outline"
   }
 ]

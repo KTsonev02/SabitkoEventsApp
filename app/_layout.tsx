@@ -49,6 +49,12 @@ export default function RootLayout() {
 
         }}
         />
+        <Stack.Screen name = "(api)/buy-tickets/[id]"
+        options={{
+          headerTitle: "Book an event:"
+
+        }}
+        />
         <Stack.Screen name = "event/[id]"
         options={{
           headerTitle: "Detail for:",

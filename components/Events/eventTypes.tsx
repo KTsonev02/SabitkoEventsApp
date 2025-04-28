@@ -13,4 +13,6 @@ export type EventData = {
     lat?: number;
     lon?: number;
     category: string;
+    price: number;
+    total_seats: number;
   };

@@ -26,6 +26,10 @@ export default function TabLayout() {
         options={{
           tabBarIcon: ({ color, size }) => <Ionicons name="pencil-sharp" size={28} color={color} />
         }}/>
+        <Tabs.Screen name = 'Tickets'
+        options={{
+          tabBarIcon: ({ color, size }) => <Ionicons name="ticket" size={28} color={color} />
+        }}/>
         <Tabs.Screen name = 'Profile'
          options={{
           tabBarIcon: ({ color, size }) => <Image source={{uri:user?.image}}

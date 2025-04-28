@@ -13,6 +13,7 @@ import { cld, options } from '@/configs/CloudinaryConfig';
 import { ScrollView } from 'react-native';
 import RNDateTimePicker from '@react-native-community/datetimepicker';
 
+
 export default function AddEvent() {
   const [image, setImage] = useState<string | null>(null);
   const { user } = useContext(AuthContext);
@@ -21,6 +22,8 @@ export default function AddEvent() {
   const [link, setLink] = useState<string>('');
   const [time, setTime] = useState('Select Time');
   const [date, setDate] = useState('Select Date');
+  const [price, setPrice] = useState<string>(''); // Цена на събитието
+  const [seats, setSeats] = useState<string>(''); // Брой седалки
   const [openTimePicker, setOpenTimePicker] = useState(false);
   const [openDatePicker, setOpenDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -87,19 +90,23 @@ export default function AddEvent() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (location) generateMapPreview(location);
+      if (location) {
+        console.log("Location changed, generating map preview...");
+        generateMapPreview(location);
+      }
     }, 1000);
 
     return () => clearTimeout(timer);
   }, [location]);
 
   const onSubmitBtnPress = async () => {
-    if (!eventName || !location || !link || !selectedDate || !selectedTime || !image || !category) {
+    if (!eventName || !location || !link || !selectedDate || !selectedTime || !image || !category || !price || !seats) {
       Alert.alert('Missing Info', 'Please fill all fields and upload image');
       return;
     }
-  
+
     try {
+      console.log("Starting image upload...");
       upload(cld, {
         file: image,
         options: options,
@@ -109,9 +116,10 @@ export default function AddEvent() {
             Alert.alert('Error', 'Something went wrong while uploading image.');
             return;
           }
-  
+
           try {
-            // Получаване на координатите
+            // Fetch coordinates for the location
+            console.log("Fetching location coordinates...");
             const response = await axios.get(
               `https://us1.locationiq.com/v1/search`,
               {
@@ -120,39 +128,41 @@ export default function AddEvent() {
                   key: LOCATIONIQ_API_KEY,
                   format: 'json',
                   limit: 1,
-                  // 'accept-language': 'bg',
-                  // countrycodes: 'bg'
                 }
               }
             );
-  
+
             let lat = null;
             let lon = null;
             if (response.data.length > 0) {
               lat = response.data[0]?.lat || null;
               lon = response.data[0]?.lon || null;
             }
-  
-            // Подготвяне на данните за изпращане
+
+            console.log("Coordinates from LocationIQ:", lat, lon);
+
+            // Prepare event data
             const eventData = {
               name: eventName,
-              bannerUrl: resp.url,
+              bannerUrl: resp.url, // Use the uploaded image URL
               location: location,
               link: link,
               eventDate: moment(selectedDate).format('YYYY-MM-DD'),
               eventTime: moment(selectedTime).format('HH:mm'),
-              email: user?.email,
-              createdon: new Date().toISOString(), // Това трябва да се добави
-              lat: lat,
-              lon: lon,
-              category: category
-            };
-  
+              email: user?.email || '', // Ensure email is a string
+              createdon: new Date().toISOString(),
+              lat: lat || '', // Ensure lat is a string
+              lon: lon || '', // Ensure lon is a string
+              category: category,
+              price: price, // Event price
+              total_seats: seats,
+                        };
+
             console.log('Sending event data:', eventData);
-  
-            // Създаване на събитието
+
+            // Create the event
             const result = await axios.post(`${process.env.EXPO_PUBLIC_HOST_URL}/events`, eventData);
-  
+
             Alert.alert('Success', 'Event created successfully!', [
               {
                 text: 'OK',
@@ -170,7 +180,9 @@ export default function AddEvent() {
       Alert.alert('Error', 'An unexpected error occurred.');
     }
   };
+
   const onTimeChange = (event: any, timeValue: Date | undefined) => {
+    console.log("Time picker value:", timeValue);
     setOpenTimePicker(false);
     if (timeValue) {
       setSelectedTime(timeValue);
@@ -179,6 +191,7 @@ export default function AddEvent() {
   };
 
   const onDateChange = (event: any, dateValue: Date | undefined) => {
+    console.log("Date picker value:", dateValue);
     setOpenDatePicker(false);
     if (dateValue) {
       setSelectedDate(dateValue);
@@ -188,9 +201,9 @@ export default function AddEvent() {
 
   return (
     <ScrollView 
-    contentContainerStyle={styles.container}
-    keyboardShouldPersistTaps="handled"
-  >
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.title}>Add Event</Text>
 
       <TouchableOpacity onPress={pickImage}>
@@ -202,32 +215,36 @@ export default function AddEvent() {
       </TouchableOpacity>
 
       <TextInputField label="Event Name" onChangeText={setEventName} />
+      <TextInputField label="Price"  onChangeText={setPrice} />
+      <TextInputField label="Seats"  onChangeText={setSeats} />
 
       <Text style={styles.label}>Choose Category</Text>
       <View style={styles.categoryContainer}>
-      {categories.map((cat) => (
-      <Pressable
-      key={cat}
-      onPress={() => setCategory(cat)}
-      style={[
-        styles.categoryButton,
-        category === cat && styles.selectedCategoryButton
-      ]}
-      >
-      <Text
-        style={[
-          styles.categoryText,
-          category === cat && styles.selectedCategoryText
-        ]}
-      >
-        {cat}
-      </Text>
-    </Pressable>
-  ))}
-</View>
+        {categories.map((cat) => (
+          <Pressable
+            key={cat}
+            onPress={() => setCategory(cat)}
+            style={[
+              styles.categoryButton,
+              category === cat && styles.selectedCategoryButton
+            ]}
+          >
+            <Text
+              style={[
+                styles.categoryText,
+                category === cat && styles.selectedCategoryText
+              ]}
+            >
+              {cat}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
       <TextInputField
         label="Location"
         onChangeText={(text) => {
+          console.log("Location changed to:", text);
           setLocation(text);
           setMapPreview(null);
         }}
@@ -265,12 +282,11 @@ export default function AddEvent() {
           onChange={onTimeChange}
         />
       )}
-      <View style={{    marginBottom: 45,
-      }}>
-      <Button text="Submit" onPress={onSubmitBtnPress} />
+
+      <View style={{ marginBottom: 45 }}>
+        <Button text="Submit" onPress={onSubmitBtnPress} />
       </View>
     </ScrollView>
-
   );
 }
 
@@ -279,7 +295,6 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: Colors.WHITE,
     marginBottom: 55,
-
   },
   title: {
     fontSize: 25,
@@ -291,58 +306,45 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 20,
     marginBottom: 10,
-    
   },
   categoryContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
     marginBottom: 50,
-
   },
   categoryButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-    height: "70%"
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+    backgroundColor: Colors.PRIMARY,
   },
   selectedCategoryButton: {
     backgroundColor: Colors.PRIMARY,
   },
   categoryText: {
-    color: '#333',
+    color: Colors.WHITE,
+    fontSize: 14,
   },
   selectedCategoryText: {
-    color: '#fff',
     fontWeight: 'bold',
   },
   image: {
-    width: 120,
-    height: 120,
+    width: '100%',
+    height: 250,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    marginBottom: 15,
-    alignSelf: 'center',
+    marginBottom: 20,
   },
-  datetimeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  mapLoader: {
     marginBottom: 20,
   },
   mapImage: {
-    height: 200,
     width: '100%',
-    borderRadius: 10,
-    marginVertical: 10,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  mapLoader: {
     height: 200,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginVertical: 10,
+    marginTop: 20,
+    borderRadius: 10,
+  },
+  datetimeContainer: {
+    marginBottom: 20,
   },
 });

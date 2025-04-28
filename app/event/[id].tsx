@@ -36,6 +36,8 @@ export default function EventDetails() {
                     lat: apiData.lat,
                     lon: apiData.lon,
                     category: apiData.category,
+                    price: apiData.price,  // добавена цена
+                    total_seats: apiData.total_seats  // добавен общ брой места
                 };
 
                 setEvent(formattedEvent);
@@ -144,7 +146,31 @@ export default function EventDetails() {
                 <Text style={styles.detailsTitle}>Details:</Text>
                 <Text style={styles.detailsText}>{event.link}</Text>
             </View>
-)}
+            )}
+
+            {/* Show price and total seats */}
+            {event.price && (
+                <View style={styles.detailsContainer}>
+                <View style={styles.rowContainer}>
+                    <Text style={styles.detailsTitle}>Price:</Text>
+                    <Text style={styles.detailsText}>{event.price} лв.</Text>
+                </View>
+                <View style={styles.rowContainer}>
+                    <Text style={styles.detailsTitle}>Total Seats:</Text>
+                    <Text style={styles.detailsText}>{event.total_seats}</Text>
+                 </View>
+                </View>
+                )}
+
+
+            <View style={{ marginTop: 2 }}>
+                <TouchableOpacity
+                    onPress={() => router.push(`../buy-tickets/${event.id}`)}
+                    style={styles.largeButton}
+                >
+                    <Text style={styles.buttonText}>Buy Ticket!</Text>
+                </TouchableOpacity>
+            </View>
 
             {showAdminControls && (
                 <>
@@ -164,6 +190,7 @@ export default function EventDetails() {
                             <Text style={styles.buttonText}>Delete Event</Text>
                         </TouchableOpacity>
                     </View>
+                    {/* Добавяне на бутон за купуване на билети */}
                 </>
             )}
         </ScrollView>
@@ -182,27 +209,35 @@ const styles = StyleSheet.create({
     detailsContainer: {
         marginTop: 20,
         padding: 15,
-        backgroundColor: '#f9f9f9', // Светъл фон за секцията
+        backgroundColor: '#f9f9f9',
         borderRadius: 10,
-        shadowColor: '#000', // Сянка за по-елегантен вид
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 5,
-        elevation: 2, // За Android
+        elevation: 2,
     },
+    
+    rowContainer: {
+        flexDirection: 'row', // Подреждаме елементите в ред
+        justifyContent: 'space-between', // Разстояние между тях
+        marginBottom: 10, // Леко разстояние между редовете
+    },
+    
     detailsTitle: {
         fontSize: 20,
-        fontWeight: '600', // Заглавието ще е малко по-тежко
+        fontWeight: '600',
         color: Colors.PRIMARY,
         marginBottom: 10,
     },
+    
     detailsText: {
         fontSize: 16,
-        color: '#555', // По-светъл цвят за текста
-        lineHeight: 22, // Подобряване на четимостта
+        color: '#555',
+        lineHeight: 22,
         paddingVertical: 8,
         borderTopWidth: 1,
-        borderTopColor: '#ddd', // Лека граница в горната част
+        borderTopColor: '#ddd',
     },
     mapImage: {
         height: 150,
@@ -211,6 +246,7 @@ const styles = StyleSheet.create({
         marginVertical: 10,
     },
     largeButton: {
+        marginTop: 10,
         backgroundColor: Colors.PRIMARY,
         paddingVertical: 15,
         paddingHorizontal: 25,  
@@ -218,7 +254,6 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
-             
     },
     buttonText: {
         color: 'white',
