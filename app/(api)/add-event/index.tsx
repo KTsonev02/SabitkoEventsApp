@@ -61,8 +61,6 @@ export default function AddEvent() {
             key: LOCATIONIQ_API_KEY,
             format: 'json',
             limit: 1,
-            'accept-language': 'bg',
-            countrycodes: 'bg'
           }
         }
       );
@@ -122,8 +120,8 @@ export default function AddEvent() {
                   key: LOCATIONIQ_API_KEY,
                   format: 'json',
                   limit: 1,
-                  'accept-language': 'bg',
-                  countrycodes: 'bg'
+                  // 'accept-language': 'bg',
+                  // countrycodes: 'bg'
                 }
               }
             );
@@ -245,7 +243,7 @@ export default function AddEvent() {
         />
       ) : null}
 
-      <TextInputField label="Link For Event Details" onChangeText={setLink} />
+      <TextInputField label="Details: " onChangeText={setLink} />
 
       <View style={styles.datetimeContainer}>
         <Button text={date} outline={true} onPress={() => setOpenDatePicker(true)} />
@@ -267,8 +265,10 @@ export default function AddEvent() {
           onChange={onTimeChange}
         />
       )}
-
+      <View style={{    marginBottom: 45,
+      }}>
       <Button text="Submit" onPress={onSubmitBtnPress} />
+      </View>
     </ScrollView>
 
   );
@@ -278,6 +278,8 @@ const styles = StyleSheet.create({
   container: {
     padding: 20,
     backgroundColor: Colors.WHITE,
+    marginBottom: 55,
+
   },
   title: {
     fontSize: 25,
@@ -289,17 +291,21 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 20,
     marginBottom: 10,
+    
   },
   categoryContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+    marginBottom: 50,
+
   },
   categoryButton: {
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
     backgroundColor: '#f0f0f0',
+    height: "70%"
   },
   selectedCategoryButton: {
     backgroundColor: Colors.PRIMARY,

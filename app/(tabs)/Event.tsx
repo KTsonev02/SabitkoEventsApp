@@ -1,4 +1,4 @@
-import { View, Text, FlatList, StyleSheet, Pressable, ActivityIndicator, TextInput, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Pressable, ActivityIndicator, TextInput, SafeAreaView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import React, { useContext, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import Button from '@/components/Shared/Button';
@@ -96,6 +96,19 @@ export default function Event() {
       console.error('Error fetching user events:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUnregister = async (eventId: string) => {
+    try {
+      await axios.delete(`${process.env.EXPO_PUBLIC_HOST_URL}/event-register`, {
+        data: { eventId, email: user?.email }
+      });
+      Alert.alert('Success', 'You have unregistered from the event.');
+      GetUserEvents(); // Презарежда регистрираните събития
+    } catch (error) {
+      console.error('Error unregistering from event:', error);
+      Alert.alert('Error', 'Failed to unregister.');
     }
   };
 
@@ -212,7 +225,11 @@ export default function Event() {
                   isRegistered: selectedTab === 1,
                   createdon: new Date(),
                 };
-                return <EventCard event={enrichedEvent} />;
+                return (
+                  <EventCard
+                    event={enrichedEvent}
+                  />
+                );
               }}
               contentContainerStyle={{ paddingBottom: 100 }}
             />

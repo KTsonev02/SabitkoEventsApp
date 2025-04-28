@@ -106,8 +106,6 @@ export default function EditEvent() {
             key: LOCATIONIQ_API_KEY,
             format: 'json',
             limit: 1,
-            'accept-language': 'bg',
-            countrycodes: 'bg'
           }
         }
       );
@@ -192,8 +190,6 @@ export default function EditEvent() {
                         key: LOCATIONIQ_API_KEY,
                         format: 'json',
                         limit: 1,
-                        'accept-language': 'bg',
-                        countrycodes: 'bg'
                     }
                 }
             );
@@ -413,11 +409,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+    marginBottom: 50
   },
   categoryButton: {
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
+    height: '70%',
     backgroundColor: '#f0f0f0',
   },
   selectedCategoryButton: {
@@ -460,6 +458,8 @@ const styles = StyleSheet.create({
   },
   buttonGroup: {
     marginTop: 20,
+    marginBottom: 30
+
   },
   updateButton: {
     marginBottom: 15,

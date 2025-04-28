@@ -43,10 +43,10 @@ export default function RootLayout() {
           headerTitle: "Add New Post"
         }}
         />
-          <Stack.Screen name = "(api)/explore-clubs/index"
+          <Stack.Screen name = "(api)/edit-event/[id]"
         options={{
-          headerTitle: "Explore Club",
-          // headerTransparent: true
+          headerShown: false
+
         }}
         />
         <Stack.Screen name = "event/[id]"

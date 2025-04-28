@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { Text, View, ActivityIndicator, Alert, ScrollView, Button, Image, StyleSheet } from 'react-native';
+import { Text, View, ActivityIndicator, Alert, ScrollView, Button, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import axios from 'axios';
 import Colors from '@/app/constants/Colors';
@@ -64,11 +64,11 @@ export default function EventDetails() {
         if (!event?.lat || !event?.lon) {
             return (
                 <View style={styles.mapPlaceholder}>
-                    <Text>Няма налична карта</Text>
+                    <Text>No Map</Text>
                 </View>
             );
         }
-    
+
         const mapUrl = `https://maps.locationiq.com/v3/staticmap?key=pk.ec03b49d319c22cc4569574c50e8a04d&center=${event.lat},${event.lon}&zoom=15&size=600x300&markers=icon:small-red-cutout|${event.lat},${event.lon}`;
         
         return (
@@ -79,33 +79,34 @@ export default function EventDetails() {
             />
         );
     };
-    
+
     const handleDeleteEvent = async () => {
+        // Извършване на изтриването без деактивиране на бутоните
         Alert.alert(
-            'Delete Event',
-            'Are you sure you want to delete this event?',
+            'Изтриване на събитието',
+            'Сигурни ли сте, че искате да изтриете това събитие?',
             [
                 {
-                    text: 'Cancel',
+                    text: 'Отказ',
                     style: 'cancel',
                 },
                 {
-                    text: 'Delete',
+                    text: 'Изтрий',
                     style: 'destructive',
                     onPress: async () => {
                         try {
                             await axios.delete(`${process.env.EXPO_PUBLIC_HOST_URL}/events`, {
                                 data: { id }
                             });
-                            Alert.alert('Success', 'Event deleted successfully', [
+                            Alert.alert('Успех', 'Събитието беше изтрито успешно', [
                                 {
                                     text: 'OK',
                                     onPress: () => router.replace('/Event'),
                                 },
                             ]);
                         } catch (error) {
-                            console.error('Delete error:', error);
-                            Alert.alert('Error', 'Failed to delete event');
+                            console.error('Грешка при изтриване:', error);
+                            Alert.alert('Грешка', 'Неуспешно изтриване на събитието');
                         }
                     },
                 },
@@ -137,21 +138,31 @@ export default function EventDetails() {
             <EventCard event={event} hideDetailsButton={true} />
             {renderMap()}
 
+            {/* Add the link display here */}
+            {event.link && (
+            <View style={styles.detailsContainer}>
+                <Text style={styles.detailsTitle}>Details:</Text>
+                <Text style={styles.detailsText}>{event.link}</Text>
+            </View>
+)}
+
             {showAdminControls && (
                 <>
                     <View style={{ marginTop: 20 }}>
-                        <Button
-                            title="Редактирай събитието"
-                            onPress={() => router.push(`/edit-event/${event.id}`)}
-                            color={Colors.PRIMARY}
-                        />
+                    <TouchableOpacity
+                            onPress={() => router.push(`../edit-event/${event.id}`)}
+                            style={styles.largeButton}
+                        >
+                            <Text style={styles.buttonText}>Edit Event</Text>
+                        </TouchableOpacity>
                     </View>
-                    <View style={{ marginTop: 20 }}>
-                        <Button
-                            title="Изтрий събитието"
+                    <View style={{ marginTop: 20, marginBottom: 70 }}>
+                        <TouchableOpacity
                             onPress={handleDeleteEvent}
-                            color="red"
-                        />
+                            style={styles.largeButton}
+                        >
+                            <Text style={styles.buttonText}>Delete Event</Text>
+                        </TouchableOpacity>
                     </View>
                 </>
             )}
@@ -168,10 +179,49 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         marginVertical: 10,
     },
+    detailsContainer: {
+        marginTop: 20,
+        padding: 15,
+        backgroundColor: '#f9f9f9', // Светъл фон за секцията
+        borderRadius: 10,
+        shadowColor: '#000', // Сянка за по-елегантен вид
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 5,
+        elevation: 2, // За Android
+    },
+    detailsTitle: {
+        fontSize: 20,
+        fontWeight: '600', // Заглавието ще е малко по-тежко
+        color: Colors.PRIMARY,
+        marginBottom: 10,
+    },
+    detailsText: {
+        fontSize: 16,
+        color: '#555', // По-светъл цвят за текста
+        lineHeight: 22, // Подобряване на четимостта
+        paddingVertical: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#ddd', // Лека граница в горната част
+    },
     mapImage: {
         height: 150,
         width: '100%',
         borderRadius: 8,
         marginVertical: 10,
+    },
+    largeButton: {
+        backgroundColor: Colors.PRIMARY,
+        paddingVertical: 15,
+        paddingHorizontal: 25,  
+        fontSize: 18,           
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+             
+    },
+    buttonText: {
+        color: 'white',
+        fontSize: 18,
     },
 });

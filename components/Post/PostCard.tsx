@@ -1,9 +1,10 @@
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import React, { useContext, useState } from 'react';
 import AntDesign from '@expo/vector-icons/AntDesign';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { likePost, unlikePost } from './LikePost'; // Вашите API функции за лайковете
+import { likePost, unlikePost } from './LikePost';
 import { AuthContext } from '@/context/AuthContext';
+import PostComments from './PostComments';
+import UserAvatar from './UserAvatar';
 
 interface PostCardProps {
   post: {
@@ -11,9 +12,12 @@ interface PostCardProps {
     content: string;
     username: string;
     userprofileimage: string;
+    email: string;
+    useremail: string;  // новото поле за имейла на създателя
     imageurl: string;
     createdon: string;
     likes_count: number;
+    comment_count: number;
   };
   onDelete: (postId: number) => void;
 }
@@ -30,8 +34,7 @@ export default function PostCard({ post, onDelete }: PostCardProps) {
       await likePost(post.id, user.email);
       setLikes(likes + 1);
     } catch (error) {
-      console.error("Error liking post:");
-      // Optionally show error to user
+      console.error("Error liking post:", error);
     }
   };
 
@@ -43,13 +46,15 @@ export default function PostCard({ post, onDelete }: PostCardProps) {
       await unlikePost(post.id, user.email);
       setLikes(likes - 1);
     } catch (error) {
-      console.error("Error unliking post:");
-      // Optionally show error to user
+      console.error("Error unliking post:", error);
     }
   };
 
+  const canDelete = user?.email === post.useremail || user?.role === 'admin'; // Проверка за имейл
+
   return (
     <View style={styles.container}>
+      <UserAvatar name={post?.username} image={post?.userprofileimage} date={post?.createdon} />
       <Text style={styles.username}>{post.username}</Text>
       <Text style={styles.content}>{post.content}</Text>
 
@@ -71,15 +76,21 @@ export default function PostCard({ post, onDelete }: PostCardProps) {
           <Text style={styles.buttonText}>Unlike</Text>
         </TouchableOpacity>
 
-        <Text style={styles.likes}>{likes}</Text>
-
-        <FontAwesome5 name="comment" size={24} color="black" />
-        <Text style={styles.commentCount}>25</Text>
+        <Text style={styles.likes}>Rate: {likes}</Text> 
       </View>
 
-      <TouchableOpacity onPress={() => onDelete(post.id)} style={styles.deleteButton}>
-        <Text style={styles.deleteText}>Delete</Text>
-      </TouchableOpacity>
+      <PostComments 
+        postId={post.id} 
+        userId={user?.id || ''} 
+        currentUserUsername={user?.username || ''}
+        initialCommentCount={post.comment_count}
+      />
+
+      {canDelete && (
+        <TouchableOpacity onPress={() => onDelete(post.id)} style={styles.deleteButton}>
+          <Text style={styles.deleteText}>Delete</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -138,10 +149,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginLeft: 8,
   },
-  commentCount: {
-    fontSize: 18,
-    marginLeft: 8,
-  },
   deleteButton: {
     backgroundColor: '#ff4d4d',
     padding: 10,
@@ -152,5 +159,5 @@ const styles = StyleSheet.create({
   deleteText: {
     color: 'white',
     fontSize: 16,
-  },
+  }, 
 });

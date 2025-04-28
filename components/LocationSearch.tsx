@@ -44,8 +44,8 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onSelectLocation }) => 
             format: 'json',
             addressdetails: 1,
             limit: 5,
-            'accept-language': 'bg', // Резултати на български език
-            countrycodes: 'bg', // Приоритизиране на български локации
+            // 'accept-language': 'bg', // Резултати на български език
+            // countrycodes: 'bg', // Приоритизиране на български локации
           }
         }
       );
