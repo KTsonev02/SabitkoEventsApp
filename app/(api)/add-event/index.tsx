@@ -314,13 +314,15 @@ const styles = StyleSheet.create({
     marginBottom: 50,
   },
   categoryButton: {
+    width: 120,
+    height: 50,
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 5,
     backgroundColor: Colors.PRIMARY,
   },
   selectedCategoryButton: {
-    backgroundColor: Colors.PRIMARY,
+    backgroundColor: Colors.SECONDARY,
   },
   categoryText: {
     color: Colors.WHITE,

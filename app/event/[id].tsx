@@ -136,7 +136,7 @@ export default function EventDetails() {
     const showAdminControls = userRole === 'admin' || (userRole === 'organizer' && isEventCreator);
 
     return (
-        <ScrollView contentContainerStyle={{ padding: 10 }}>
+        <ScrollView contentContainerStyle={{ padding: 10, paddingBottom: 100,}}>
             <EventCard event={event} hideDetailsButton={true} />
             {renderMap()}
 
