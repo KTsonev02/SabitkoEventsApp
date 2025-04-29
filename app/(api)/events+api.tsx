@@ -104,13 +104,17 @@ export async function GET(request: Request) {
       if (!userId) {
         return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
       }
-
+    
       const result = await client.query(
         `
         SELECT 
           t.id, 
+          t.event_id,
           e.name AS event_name, 
           e.event_date, 
+          e.bannerurl AS event_image, 
+          e.location AS venue,         
+          e.category AS category,     
           s.seat_number
         FROM tickets t
         JOIN events e ON t.event_id = e.id
@@ -120,14 +124,18 @@ export async function GET(request: Request) {
         `,
         [userId]
       );
-
+    
       const tickets = result.rows.map((row: any) => ({
         id: row.id,
+        eventId: row.event_id, // Map event_id to eventId
         eventName: row.event_name,
         eventDate: row.event_date,
+        eventImage: row.event_image,  
+        venue: row.venue,            
+        category: row.category,      
         seatNumber: row.seat_number || 'General',
       }));
-
+    
       return NextResponse.json(tickets, { status: 200 });
     }
     // Ако има подаден ID параметър => Връщаме едно събитие + неговите седалки
