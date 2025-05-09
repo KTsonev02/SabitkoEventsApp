@@ -22,9 +22,13 @@ export default function TabLayout() {
          options={{
           tabBarIcon: ({ color, size }) => <Ionicons name="calendar" size={28} color={color} />
         }}/>
-        <Tabs.Screen name = 'Clubs'
+        <Tabs.Screen name = 'Posts'
         options={{
-          tabBarIcon: ({ color, size }) => <Ionicons name="accessibility" size={28} color={color} />
+          tabBarIcon: ({ color, size }) => <Ionicons name="pencil-sharp" size={28} color={color} />
+        }}/>
+        <Tabs.Screen name = 'Tickets'
+        options={{
+          tabBarIcon: ({ color, size }) => <Ionicons name="ticket" size={28} color={color} />
         }}/>
         <Tabs.Screen name = 'Profile'
          options={{

@@ -1,76 +1,163 @@
-import { View, Text, Image, StyleSheet } from 'react-native'
-import React from 'react'
-import UserAvatar from './UserAvatar'
-import { Colors } from 'react-native/Libraries/NewAppScreen'
+import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useContext, useState } from 'react';
 import AntDesign from '@expo/vector-icons/AntDesign';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { likePost, unlikePost } from './LikePost';
+import { AuthContext } from '@/context/AuthContext';
+import PostComments from './PostComments';
+import UserAvatar from './UserAvatar';
 
-export default function PostCard({post}: any) {
+interface PostCardProps {
+  post: {
+    id: number;
+    content: string;
+    username: string;
+    userprofileimage: string;
+    email: string;
+    useremail: string;  // новото поле за имейла на създателя
+    imageurl: string;
+    createdon: string;
+    likes_count: number;
+    comment_count: number;
+  };
+  onDelete: (postId: number) => void;
+}
+
+export default function PostCard({ post, onDelete }: PostCardProps) {
+  const [likes, setLikes] = useState(post.likes_count);
+  const { user } = useContext(AuthContext);
+
+  const handleLike = async () => {
+    try {
+      if (!user?.email) {
+        throw new Error("You must be logged in to like posts");
+      }
+      await likePost(post.id, user.email);
+      setLikes(likes + 1);
+    } catch (error) {
+      console.error("Error liking post:", error);
+    }
+  };
+
+  const handleUnlike = async () => {
+    try {
+      if (!user?.email) {
+        throw new Error("You must be logged in to unlike posts");
+      }
+      await unlikePost(post.id, user.email);
+      setLikes(likes - 1);
+    } catch (error) {
+      console.error("Error unliking post:", error);
+    }
+  };
+
+  const canDelete = user?.email === post.useremail || user?.role === 'admin'; // Проверка за имейл
+
   return (
-    <View style={{
-        padding: 15,
-        backgroundColor: Colors.WHITE,
-        borderRadius: 10,
-        marginTop: 10
-    }}>
-        <UserAvatar name={post?.name} image={post?.image} date={post?.createdon} />
-        
-        <Text style={{
-            fontSize: 18,
-            marginTop: 10,
-            color: Colors.GREY
-        }}>
-            {post.content}
-        </Text>
+    <View style={styles.container}>
+      <UserAvatar name={post?.username} image={post?.userprofileimage} date={post?.createdon} />
+      <Text style={styles.username}>{post.username}</Text>
+      <Text style={styles.content}>{post.content}</Text>
 
-        {post.imageurl &&
-            <Image 
-                source={{uri: post?.imageurl}} 
-                style={{
-                    width: '100%',
-                    height: 200,
-                    borderRadius: 10,
-                    marginTop: 10,
-                }} 
-            />
-        }
+      {post.imageurl && (
+        <Image
+          source={{ uri: post.imageurl }}
+          style={styles.image}
+        />
+      )}
 
-        <View style={{
-            marginTop: 10,
-            display: 'flex',
-            alignItems: 'center',
-            flexDirection: 'row',
-            gap: 45
-        }}>
-            <View style={styles.subContainer}>
-                <AntDesign name="like2" size={24} color="black" />
-                <Text style={{
-                    fontSize: 18
-                }}>25</Text>
-            </View>
-            <View style={styles.subContainer}>
-                <FontAwesome5 name="comment" size={24} color="black" />
-                <Text style={{
-                    fontSize: 18
-                }}>25</Text>
-            </View>
-        </View>
-        
-        <Text style={{
-            marginTop: 10,
-            color: Colors.GREY
-        }}>
-            View All Comment
-        </Text>
+      <View style={styles.footer}>
+        <TouchableOpacity onPress={handleLike} style={styles.likeButton}>
+          <AntDesign name="like1" size={24} color="white" />
+          <Text style={styles.buttonText}>Like</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={handleUnlike} style={styles.unlikeButton}>
+          <AntDesign name="dislike1" size={24} color="white" />
+          <Text style={styles.buttonText}>Unlike</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.likes}>Rate: {likes}</Text> 
+      </View>
+
+      <PostComments 
+        postId={post.id} 
+        userId={user?.id || ''} 
+        currentUserUsername={user?.username || ''}
+        initialCommentCount={post.comment_count}
+      />
+
+      {canDelete && (
+        <TouchableOpacity onPress={() => onDelete(post.id)} style={styles.deleteButton}>
+          <Text style={styles.deleteText}>Delete</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-    subContainer: {
-        display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8
-    },
+  container: {
+    padding: 15,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
+  username: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  content: {
+    marginVertical: 10,
+    fontSize: 16,
+    color: '#333',
+  },
+  image: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    backgroundColor: '#e0e0e0',
+  },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginTop: 10,
+    gap: 10,
+  },
+  likeButton: {
+    backgroundColor: '#4CAF50',
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 8,
+  },
+  unlikeButton: {
+    backgroundColor: '#f44336',
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: 'white',
+    marginLeft: 5,
+    fontSize: 16,
+  },
+  likes: {
+    fontSize: 18,
+    marginLeft: 8,
+  },
+  deleteButton: {
+    backgroundColor: '#ff4d4d',
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 15,
+    alignItems: 'center',
+  },
+  deleteText: {
+    color: 'white',
+    fontSize: 16,
+  }, 
 });

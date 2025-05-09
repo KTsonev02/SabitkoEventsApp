@@ -34,6 +34,8 @@ export default function EditEvent() {
   const categories = ['Music', 'Education', 'Business', 'Technology', 'Sport'];
   const LOCATIONIQ_API_KEY = 'pk.ec03b49d319c22cc4569574c50e8a04d';
   const router = useRouter();
+  const [price, setPrice] = useState<string>(''); // Добавяне на price
+  const [totalSeats, setTotalSeats] = useState<string>(''); // Добавяне на total_seats
   const numericId = Number(id); // Преобразувай го в число
   const [deleteEvent, setDeleteEvent] = useState<boolean>(false); 
 
@@ -51,7 +53,8 @@ export default function EditEvent() {
           setLink(event.link || '');
           setCategory(event.category || '');
           setOriginalImage(event.bannerurl || null);
-  
+          setPrice(event.price || ''); 
+          setTotalSeats(event.total_seats?.toString() || '');  
           // Форматиране на датата и часа
           if (event.event_date) {
             const date = new Date(event.event_date);
@@ -106,8 +109,6 @@ export default function EditEvent() {
             key: LOCATIONIQ_API_KEY,
             format: 'json',
             limit: 1,
-            'accept-language': 'bg',
-            countrycodes: 'bg'
           }
         }
       );
@@ -154,7 +155,7 @@ export default function EditEvent() {
   };
 
   const handleUpdateEvent = async () => {
-    if (!eventName || !location || !link || !selectedDate || !selectedTime || !category) {
+    if (!eventName || !location || !link || !selectedDate || !selectedTime || !category || !price || !totalSeats) {
         Alert.alert('Missing Info', 'Please fill all required fields');
         return;
     }
@@ -192,8 +193,6 @@ export default function EditEvent() {
                         key: LOCATIONIQ_API_KEY,
                         format: 'json',
                         limit: 1,
-                        'accept-language': 'bg',
-                        countrycodes: 'bg'
                     }
                 }
             );
@@ -211,6 +210,8 @@ export default function EditEvent() {
             bannerUrl: imageUrl,
             location: location,
             link: link,
+            price: price, // Добавяне на price
+            totalSeats: totalSeats, // Добавяне на total_seats
             eventDate: moment(selectedDate).format('YYYY-MM-DD'),
             eventTime: moment(selectedTime).format('HH:mm'),
             lat: parseFloat(lat), // Преобразуване в число
@@ -220,9 +221,7 @@ export default function EditEvent() {
 
         console.log('Event Data:', eventData);
 
-        // Проверка на URL адреса
         const patchUrl = `${process.env.EXPO_PUBLIC_HOST_URL}/events?id=${id}`;
-        console.log('PATCH URL:', patchUrl);
 
         const result = await axios.patch(patchUrl, eventData);
         Alert.alert('Success', 'Event updated successfully!', [
@@ -350,6 +349,13 @@ export default function EditEvent() {
         onChangeText={setLink} 
       />
 
+{/* Price */}
+<TextInputField label="Price" value={price} onChangeText={setPrice} />
+
+{/* Total Seats */}
+<TextInputField label="Total Seats" value={totalSeats} onChangeText={setTotalSeats} />
+
+
       <View style={styles.datetimeContainer}>
         <Button text={date} outline={true} onPress={() => setOpenDatePicker(true)} />
         <Button text={time} outline={true} onPress={() => setOpenTimePicker(true)} />
@@ -413,11 +419,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+    marginBottom: 50
   },
   categoryButton: {
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
+    height: '70%',
     backgroundColor: '#f0f0f0',
   },
   selectedCategoryButton: {
@@ -460,6 +468,8 @@ const styles = StyleSheet.create({
   },
   buttonGroup: {
     marginTop: 20,
+    marginBottom: 30
+
   },
   updateButton: {
     marginBottom: 15,

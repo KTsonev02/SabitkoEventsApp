@@ -1,21 +1,26 @@
-import React, { useEffect, useState } from 'react';
-import { Text, View, ActivityIndicator, Alert, ScrollView, Button, Image, StyleSheet } from 'react-native';
+import React, { useEffect, useState, useContext } from 'react';
+import { Text, View, ActivityIndicator, Alert, ScrollView, Button, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import axios from 'axios';
 import Colors from '@/app/constants/Colors';
 import EventCard from '@/components/Events/EventCard';
+import { AuthContext } from '@/context/AuthContext';
 
 export default function EventDetails() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
     const [event, setEvent] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const { user } = useContext(AuthContext);
+    const [userRole, setUserRole] = useState<string>('');
+    const [isEventCreator, setIsEventCreator] = useState(false);
 
     useEffect(() => {
-        const fetchEvent = async () => {
+        const fetchEventAndUser = async () => {
             try {
-                const response = await axios.get(`${process.env.EXPO_PUBLIC_HOST_URL}/events?id=${id}`);
-                const apiData = response.data;
+                // Fetch event data
+                const eventResponse = await axios.get(`${process.env.EXPO_PUBLIC_HOST_URL}/events?id=${id}`);
+                const apiData = eventResponse.data;
 
                 const formattedEvent = {
                     id: apiData.id,
@@ -26,81 +31,90 @@ export default function EventDetails() {
                     eventDate: apiData.event_date,
                     eventTime: apiData.event_time,
                     email: apiData.email || apiData.username,
+                    createdby: apiData.createdby,
                     createdon: apiData.createdon,
                     lat: apiData.lat,
                     lon: apiData.lon,
                     category: apiData.category,
+                    price: apiData.price,  // добавена цена
+                    total_seats: apiData.total_seats  // добавен общ брой места
                 };
-                console.log('Banner URL:', apiData.bannerUrl);
-                console.log('API response:', response.data);
 
                 setEvent(formattedEvent);
+
+                // Fetch user role if user is logged in
+                if (user?.email) {
+                    const userResponse = await axios.get(`${process.env.EXPO_PUBLIC_HOST_URL}/user?email=${user.email}`);
+                    if (userResponse.data) {
+                        setUserRole(userResponse.data.role);
+                        // Check if current user is the creator of this event
+                        setIsEventCreator(userResponse.data.email === formattedEvent.createdby);
+                    }
+                }
             } catch (error) {
-                console.error('Error fetching event:', error);
-                Alert.alert('Грешка', 'Неуспешно зареждане на събитието.');
+                console.error('Error fetching data:', error);
+                Alert.alert('Грешка', 'Неуспешно зареждане на данните.');
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchEvent();
-    }, [id]);
+        fetchEventAndUser();
+    }, [id, user?.email]);
 
-    // 4. Генериране на карта (ако има координати)
-      const renderMap = () => {
-        if (!event.lat || !event.lon) {
-          return (
-            <View style={styles.mapPlaceholder}>
-              <Text>Няма налична карта</Text>
-            </View>
-          );
+    const renderMap = () => {
+        if (!event?.lat || !event?.lon) {
+            return (
+                <View style={styles.mapPlaceholder}>
+                    <Text>No Map</Text>
+                </View>
+            );
         }
-    
+
         const mapUrl = `https://maps.locationiq.com/v3/staticmap?key=pk.ec03b49d319c22cc4569574c50e8a04d&center=${event.lat},${event.lon}&zoom=15&size=600x300&markers=icon:small-red-cutout|${event.lat},${event.lon}`;
         
         return (
-          <Image
-            source={{ uri: mapUrl }}
-            style={styles.mapImage}
-            onError={() => console.log('Грешка при зареждане на карта')}
-          />
+            <Image
+                source={{ uri: mapUrl }}
+                style={styles.mapImage}
+                onError={() => console.log('Грешка при зареждане на карта')}
+            />
         );
-      };
-    
+    };
 
     const handleDeleteEvent = async () => {
+        // Извършване на изтриването без деактивиране на бутоните
         Alert.alert(
-          'Delete Event',
-          'Are you sure you want to delete this event?',
-          [
-            {
-              text: 'Cancel',
-              style: 'cancel',
-            },
-            {
-              text: 'Delete',
-              style: 'destructive',
-              onPress: async () => {
-                try {
-                  await axios.delete(`${process.env.EXPO_PUBLIC_HOST_URL}/events`, {
-                    data: { id }
-                  });
-                  Alert.alert('Success', 'Event deleted successfully', [
-                    {
-                      text: 'OK',
-                      onPress: () => router.replace('/Event'),
+            'Изтриване на събитието',
+            'Сигурни ли сте, че искате да изтриете това събитие?',
+            [
+                {
+                    text: 'Отказ',
+                    style: 'cancel',
+                },
+                {
+                    text: 'Изтрий',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await axios.delete(`${process.env.EXPO_PUBLIC_HOST_URL}/events`, {
+                                data: { id }
+                            });
+                            Alert.alert('Успех', 'Събитието беше изтрито успешно', [
+                                {
+                                    text: 'OK',
+                                    onPress: () => router.replace('/Event'),
+                                },
+                            ]);
+                        } catch (error) {
+                            console.error('Грешка при изтриване:', error);
+                            Alert.alert('Грешка', 'Неуспешно изтриване на събитието');
+                        }
                     },
-                  ]);
-                } catch (error) {
-                  console.error('Delete error:', error);
-                  Alert.alert('Error', 'Failed to delete event');
-                }
-              },
-            },
-          ]
+                },
+            ]
         );
-      };
-    
+    };
 
     if (loading) {
         return (
@@ -118,47 +132,131 @@ export default function EventDetails() {
         );
     }
 
+    // Проверка дали потребителят трябва да вижда бутоните
+    const showAdminControls = userRole === 'admin' || (userRole === 'organizer' && isEventCreator);
+
     return (
-        <ScrollView contentContainerStyle={{ padding: 10 }}>
-            {/* Проверка дали има bannerUrl и показване на снимката директно тук */}
-
-
-            <EventCard event={event} />
-             {/* Карта */}
+        <ScrollView contentContainerStyle={{ padding: 10, paddingBottom: 100,}}>
+            <EventCard event={event} hideDetailsButton={true} />
             {renderMap()}
 
-            <View style={{ marginTop: 20 }}>
-                <Button
-                    title="Редактирай събитието"
-                    onPress={() => router.push(`/edit-event/${event.id}`)}
-                    color={Colors.PRIMARY}
-                />
+            {/* Add the link display here */}
+            {event.link && (
+            <View style={styles.detailsContainer}>
+                <Text style={styles.detailsTitle}>Details:</Text>
+                <Text style={styles.detailsText}>{event.link}</Text>
             </View>
-            <View style={{ marginTop: 20 }}>
-                <Button
-                    title="Изтрий събитието"
-                    onPress={() => handleDeleteEvent()} 
-                    color="red" // Може да се промени на друг цвят, ако е необходимо
-                />
+            )}
+
+            {/* Show price and total seats */}
+            {event.price && (
+                <View style={styles.detailsContainer}>
+                <View style={styles.rowContainer}>
+                    <Text style={styles.detailsTitle}>Price:</Text>
+                    <Text style={styles.detailsText}>{event.price} лв.</Text>
+                </View>
+                <View style={styles.rowContainer}>
+                    <Text style={styles.detailsTitle}>Total Seats:</Text>
+                    <Text style={styles.detailsText}>{event.total_seats}</Text>
+                 </View>
+                </View>
+                )}
+
+
+            <View style={{ marginTop: 2 }}>
+                <TouchableOpacity
+                    onPress={() => router.push(`../buy-tickets/${event.id}`)}
+                    style={styles.largeButton}
+                >
+                    <Text style={styles.buttonText}>Buy Ticket!</Text>
+                </TouchableOpacity>
             </View>
+
+            {showAdminControls && (
+                <>
+                    <View style={{ marginTop: 20 }}>
+                    <TouchableOpacity
+                            onPress={() => router.push(`../edit-event/${event.id}`)}
+                            style={styles.largeButton}
+                        >
+                            <Text style={styles.buttonText}>Edit Event</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <View style={{ marginTop: 20, marginBottom: 70 }}>
+                        <TouchableOpacity
+                            onPress={handleDeleteEvent}
+                            style={styles.largeButton}
+                        >
+                            <Text style={styles.buttonText}>Delete Event</Text>
+                        </TouchableOpacity>
+                    </View>
+                    {/* Добавяне на бутон за купуване на билети */}
+                </>
+            )}
         </ScrollView>
     );
 }
 
-
 const styles = StyleSheet.create({
-mapPlaceholder: {
-    height: 150,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    marginVertical: 10,
-  },
-  mapImage: {
-    height: 150,
-    width: '100%',
-    borderRadius: 8,
-    marginVertical: 10,
-  },
+    mapPlaceholder: {
+        height: 150,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#f5f5f5',
+        borderRadius: 8,
+        marginVertical: 10,
+    },
+    detailsContainer: {
+        marginTop: 20,
+        padding: 15,
+        backgroundColor: '#f9f9f9',
+        borderRadius: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 5,
+        elevation: 2,
+    },
+    
+    rowContainer: {
+        flexDirection: 'row', // Подреждаме елементите в ред
+        justifyContent: 'space-between', // Разстояние между тях
+        marginBottom: 10, // Леко разстояние между редовете
+    },
+    
+    detailsTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        color: Colors.PRIMARY,
+        marginBottom: 10,
+    },
+    
+    detailsText: {
+        fontSize: 16,
+        color: '#555',
+        lineHeight: 22,
+        paddingVertical: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#ddd',
+    },
+    mapImage: {
+        height: 150,
+        width: '100%',
+        borderRadius: 8,
+        marginVertical: 10,
+    },
+    largeButton: {
+        marginTop: 10,
+        backgroundColor: Colors.PRIMARY,
+        paddingVertical: 15,
+        paddingHorizontal: 25,  
+        fontSize: 18,           
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    buttonText: {
+        color: 'white',
+        fontSize: 18,
+    },
 });

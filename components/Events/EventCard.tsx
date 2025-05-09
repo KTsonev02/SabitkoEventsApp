@@ -5,99 +5,83 @@ import { AuthContext } from '@/context/AuthContext';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { router } from 'expo-router';
-import { collection, query, where, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '@/configs/FirebaseConfig';
 import Colors from '@/app/constants/Colors';
-import { useRouter } from 'expo-router'; // Импортирай навигацията
 
-// Тип за събитията (съвпада с Firestore структурата)
+// Тип за събитията
 type EventData = {
   id: string;
   name: string;
   bannerUrl: string;
   location: string;
   link: string;
-  eventDate: string; // Формат: "YYYY-MM-DD"
-  eventTime: string; // Формат: "HH:mm"
-  email: string; // Имейл на организатора
-  createdon: any; // Firestore Timestamp
-  lat?: number; // Незадължително
-  lon?: number; // Незадължително
+  eventDate: string;
+  eventTime: string;
+  email: string;
+  createdon: any;
+  lat?: number;
+  lon?: number;
   category: string;
 };
 
-const EventCard = ({ event }: { event: EventData }) => {
-    const { user } = useContext(AuthContext);
-    const [isRegistered, setIsRegistered] = useState(false);
-    const [loading, setLoading] = useState(false);
-  
-    useEffect(() => {
-      const checkRegistration = async () => {
-        if (!user?.email) return;
-  
-        try {
-          const registrationsRef = collection(db, 'event_registrations');
-          const q = query(
-            registrationsRef,
-            where('eventId', '==', event.id),
-            where('userEmail', '==', user.email)
-          );
-          const snapshot = await getDocs(q);
-          setIsRegistered(!snapshot.empty);
-        } catch (error) {
-          console.error('Error checking registration:', error);
-        }
-      };
-  
-      checkRegistration();
-    }, [event.id, user?.email]);
+const EventCard = ({ event, hideDetailsButton = false }: { event: EventData; hideDetailsButton?: boolean }) => {
+  const { user } = useContext(AuthContext);
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // 2. Регистрация/отписване
-  const handleRegistration = async () => {
-    if (!user?.email) {
-      Alert.alert('Грешка', 'Трябва да сте влезли в системата');
-      return;
-    }
+  // useEffect(() => {
+  //   const checkRegistration = async () => {
+  //     if (!user?.email) return;
+  //     try {
+  //       const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/event-register?email=${user.email}`);
+  //       const data = await res.json();
+  //       setIsRegistered(data.isRegistered); // очаква се бекендът да връща { isRegistered: true/false }
+  //     } catch (error) {
+  //       console.error('Error checking registration:', error);
+  //     }
+  //   };
+  //   checkRegistration();
+  // }, [event.id, user?.email]);
 
-    setLoading(true);
-    try {
-      if (isRegistered) {
-        // Отписване
-        const q = query(
-          collection(db, 'event_registrations'),
-          where('eventId', '==', event.id),
-          where('userEmail', '==', user.email)
-        );
-        const snapshot = await getDocs(q);
-        snapshot.forEach(async (doc) => {
-          await deleteDoc(doc.ref);
-        });
-        setIsRegistered(false);
-        Alert.alert('Успех', 'Регистрацията е отменена');
-      } else {
-        // Регистрация
-        await addDoc(collection(db, 'event_registrations'), {
-          eventId: event.id,
-          userEmail: user.email,
-          registeredAt: new Date().toISOString()
-        });
-        setIsRegistered(true);
-        Alert.alert('Успех', 'Успешна регистрация!');
-      }
-    } catch (error) {
-      console.error('Грешка при регистрация:', error);
-      Alert.alert('Грешка', 'Неуспешна операция');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const handleRegistration = async () => {
+  //   if (!user?.email) {
+  //     Alert.alert('Грешка', 'Трябва да сте влезли в системата');
+  //     return;
+  //   }
 
-  // 3. Споделяне на събитие
+  //   setLoading(true);
+  //   try {
+  //     if (isRegistered) {
+  //       const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/event-register?email=${user.email}&eventId=${event.id}`, {
+  //         method: 'DELETE',
+  //         headers: { 'Content-Type': 'application/json' },
+  //         body: JSON.stringify({ eventId: event.id, userEmail: user.email }),
+  //       });
+  //       if (!res.ok) throw new Error('Неуспешно отписване');
+  //       setIsRegistered(false);
+  //       Alert.alert('Успех', 'Регистрацията е отменена');
+  //     } else {
+  //       const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/event-register?email=${user.email}&eventId=${event.id}`, {
+  //         method: 'POST',
+  //         headers: { 'Content-Type': 'application/json' },
+  //         body: JSON.stringify({ eventId: event.id, userEmail: user.email }),
+  //       });
+  //       if (!res.ok) throw new Error('Неуспешна регистрация');
+  //       setIsRegistered(true);
+  //       Alert.alert('Успех', 'Успешна регистрация!');
+  //     }
+  //   } catch (error) {
+  //     console.error('Registration error:', error);
+  //     Alert.alert('Грешка', 'Неуспешна операция');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const shareEvent = async () => {
     try {
       const fileUri = FileSystem.documentDirectory + 'event_share.jpg';
       const { uri } = await FileSystem.downloadAsync(event.bannerUrl, fileUri);
-      
+
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, {
           dialogTitle: `Сподели ${event.name}`,
@@ -107,23 +91,18 @@ const EventCard = ({ event }: { event: EventData }) => {
         Alert.alert('Грешка', 'Функцията за споделяне не е налична');
       }
     } catch (error) {
-      console.error('Грешка при споделяне:', error);
+      console.error('Sharing error:', error);
       Alert.alert('Грешка', 'Неуспешно споделяне');
     }
   };
 
-
   return (
     <View style={styles.container}>
-      {/* Заглавна снимка */}
       <Image source={{ uri: event.bannerUrl }} style={styles.banner} />
-
-      {/* Основна информация */}
       <Text style={styles.title}>{event.name}</Text>
       <Text style={styles.organizer}>Организатор: {event.email}</Text>
       <Text style={styles.category}>{event.category}</Text>
 
-      {/* Дата и час */}
       <View style={styles.detailRow}>
         <Ionicons name="calendar-outline" size={16} color={Colors.PRIMARY} />
         <Text style={styles.detailText}>
@@ -131,25 +110,19 @@ const EventCard = ({ event }: { event: EventData }) => {
         </Text>
       </View>
 
-      {/* Локация */}
       <View style={styles.detailRow}>
         <Ionicons name="location-outline" size={16} color={Colors.PRIMARY} />
         <Text style={styles.detailText}>{event.location}</Text>
       </View>
 
-
-      {/* Бутони */}
       <View style={styles.buttonsContainer}>
-        <TouchableOpacity 
-          style={[styles.button, styles.shareButton]}
-          onPress={shareEvent}
-        >
+        <TouchableOpacity style={[styles.button, styles.shareButton]} onPress={shareEvent}>
           <Text style={styles.shareButtonText}>Сподели</Text>
         </TouchableOpacity>
-
+{/* 
         <TouchableOpacity
           style={[
-            styles.button, 
+            styles.button,
             isRegistered ? styles.unregisterButton : styles.registerButton
           ]}
           onPress={handleRegistration}
@@ -162,15 +135,11 @@ const EventCard = ({ event }: { event: EventData }) => {
               {isRegistered ? 'Отмени' : 'Регистрирай се'}
             </Text>
           )}
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
-      {/* Бутон за редакция (ако потребителят е организатор) */}
-      {user?.email === event.email && (
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => router.push(`../event/${event.id}`)} // Навигиране към динамичната страница
-        >
+      {!hideDetailsButton && (
+        <TouchableOpacity style={styles.editButton} onPress={() => router.push(`../event/${event.id}`)}>
           <Text style={styles.editButtonText}>Виж детайли</Text>
         </TouchableOpacity>
       )}
