@@ -26,6 +26,34 @@ async function ensureConnection() {
 
 
 export async function POST(request: Request) {
+  const url = new URL(request.url);
+  const action = url.searchParams.get("action");
+
+  if (action === "createPaymentIntent") {
+    try {
+      const { amount } = await request.json();
+
+      if (!amount || typeof amount !== "number") {
+        return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
+      }
+
+      const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY!);
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount * 100, // Convert to cents
+        currency: "bgn", // Change to your currency
+        automatic_payment_methods: { enabled: true },
+      });
+
+      return NextResponse.json({
+        clientSecret: paymentIntent.client_secret,
+      });
+    } catch (error) {
+      console.error("❌ Stripe Payment Intent Error:", error);
+      return NextResponse.json({ error: "Failed to create Payment Intent" }, { status: 500 });
+    }
+  }
+
   const {
     name, bannerUrl, location, link,
     eventDate, eventTime, email, createdon,

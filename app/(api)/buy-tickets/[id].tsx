@@ -1,12 +1,24 @@
 import { useContext, useEffect, useState } from "react";
 import { 
   Text, View, FlatList, TouchableOpacity, 
-  ActivityIndicator, Alert, StyleSheet 
+  ActivityIndicator, Alert, StyleSheet, Platform 
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Button from "@/components/Shared/Button";
 import { AuthContext } from "@/context/AuthContext";
-import Tickets from "@/app/(tabs)/Tickets";
+
+// Импортираме Stripe за мобилни устройства
+import {
+  initStripe as initStripeNative,
+  useStripe as useStripeNative,
+  presentPaymentSheet,
+} from "@stripe/stripe-react-native";
+
+// Импортираме Stripe за уеб
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, useStripe as useStripeWeb, useElements, CardElement } from "@stripe/react-stripe-js";
+
+const stripePromise = loadStripe(process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 export default function BuyTicketsScreen() {
   const { id } = useLocalSearchParams();    // id на събитието
@@ -16,7 +28,19 @@ export default function BuyTicketsScreen() {
   const [loading, setLoading] = useState(true);
   const [selectedSeats, setSelectedSeats] = useState<any[]>([]);
   const { user } = useContext(AuthContext);
+
+  // Stripe инстанция
+  const stripeNative = useStripeNative();
+  const stripeWeb = useStripeWeb();
+  const elements = useElements();
+
   useEffect(() => {
+    if (Platform.OS !== "web") {
+      initStripeNative({
+        publishableKey: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
+      });
+    }
+
     if (id) fetchEvent(id as string);
   }, [id]);
 
@@ -53,15 +77,95 @@ export default function BuyTicketsScreen() {
       return;
     }
 
+    const totalPrice = selectedSeats.length * parseFloat(event.price);
+
     try {
-      const res = await fetch(`${process.env.EXPO_PUBLIC_HOST_URL}/events?id=${event.id}&action=buy`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.id, // <-- трябва да предадеш ID на потребителя, който купува
-          seatIds: selectedSeats.map(s => s.id)
-        }),
-      });
+      // Създаваме Payment Intent чрез Stripe сървъра
+      const res = await fetch(
+        `${process.env.EXPO_PUBLIC_STRIPE_HOST_URL}/create-payment-intent`, // Използваме новата променлива
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: totalPrice }),
+        }
+      );
+
+      const data = await res.json();
+      const clientSecret = data.clientSecret;
+
+      if (!clientSecret) {
+        throw new Error("Няма clientSecret");
+      }
+
+      if (Platform.OS === "web") {
+        // Уеб: Използваме Stripe.js
+        const cardElement = elements?.getElement(CardElement);
+        if (!cardElement) {
+          Alert.alert("Грешка", "Моля, въведете данни за картата.");
+          return;
+        }
+
+        const result = await stripeWeb?.confirmCardPayment(clientSecret, {
+          payment_method: {
+            card: cardElement,
+          },
+        });
+
+        if (!result) {
+          Alert.alert("Грешка", "Неуспешно плащане.");
+          return;
+        }
+
+        const { error, paymentIntent } = result;
+
+        if (error) {
+          console.error("❌ Payment error:", error);
+          Alert.alert("Грешка", "Неуспешно плащане.");
+        } else {
+          await confirmBooking();
+        }
+      } else {
+        // Мобилно устройство: Използваме Payment Sheet
+        const { error: initError } = await stripeNative.initPaymentSheet({
+          paymentIntentClientSecret: clientSecret,
+          merchantDisplayName: "Sabitko Events",
+        });
+
+        if (initError) {
+          console.error("❌ Payment Sheet initialization error:", initError);
+          Alert.alert("Грешка", "Неуспешна инициализация на плащането.");
+          return;
+        }
+
+        const { error: presentError } = await presentPaymentSheet();
+
+        if (presentError) {
+          console.error("❌ Payment Sheet presentation error:", presentError);
+          Alert.alert("Грешка", "Неуспешно плащане.");
+        } else {
+          await confirmBooking();
+        }
+      }
+    } catch (err) {
+      console.error("❌ Stripe error:", err);
+      Alert.alert("Грешка", "Проблем с плащането.");
+    }
+  };
+
+  const confirmBooking = async () => {
+    try {
+      const res = await fetch(
+        `${process.env.EXPO_PUBLIC_HOST_URL}/events?id=${event.id}&action=buy`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            seatIds: selectedSeats.map((s) => s.id),
+          }),
+        }
+      );
+
       if (!res.ok) throw new Error();
       Alert.alert("Успех", `Успешно резервирахте ${selectedSeats.length} места!`);
       router.push("/Tickets");
@@ -137,7 +241,6 @@ export default function BuyTicketsScreen() {
           <Button
             text={`Купи ${selectedSeats.length} билети`}
             onPress={buySeats}
-            // disabled={selectedSeats.length === 0}
           />
         </View>
       </View>
@@ -165,8 +268,6 @@ const styles = StyleSheet.create({
   selected: { backgroundColor: "blue" },
   seatText: { color: "white", fontWeight: "bold" },
   footer: {
-    // width: '90%',
-    // height: '20%',
     margin: 20,
     position: 'relative',
     bottom: 0,
@@ -183,5 +284,4 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 20,
   }, 
-  
 });
