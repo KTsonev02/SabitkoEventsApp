@@ -1,8 +1,8 @@
 import { View, Text, Image } from 'react-native'
 import React from 'react'
-import { Colors } from 'react-native/Libraries/NewAppScreen';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import moment from 'moment';
+import Colors from '@/app/constants/Colors';
 type USER_AVATAR = {
   name: string;
   image: string;
