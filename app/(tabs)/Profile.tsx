@@ -19,15 +19,15 @@ const profileOptions=[
     icon: "calendar-number-outline"
   },
   {
+    name: 'My Tickets',
+    path: '/Tickets',
+    icon: "log-out-outline"
+  },
+    {
     name: 'Log Out',
     path: 'logout',
     icon: "log-out-outline"
   },
-  {
-    name: 'My Tickets',
-    path: '/Tickets',
-    icon: "log-out-outline"
-  }
 ]
 
 export default function Profile() {
@@ -78,29 +78,37 @@ export default function Profile() {
       }}>{user?.email}</Text>
       </View>
 
-      <FlatList
-        data={profileOptions}
-        renderItem={({item, index} :any)=> (
-          <TouchableOpacity onPress={() => OnPressOption(item)}
-          style={{
-              display: 'flex',
-              flexDirection: 'row',
-              gap: 8,
-              padding: 10,
-              margin: 10,
-              marginTop: 15,
-              borderWidth:0.4,
-              borderRadius: 8,
-              alignItems: 'center',
-          }}> 
-            <Ionicons name={item.icon} size={34} color= {Colors.PRIMARY} />
-            <Text style={{
-              fontSize: 20,
-            }}>{item.name}</Text>
-          </TouchableOpacity>
-        )}
-        
-      />
+<FlatList
+  data={profileOptions}
+  renderItem={({item, index} :any)=> {
+    const isLogout = item.path === 'logout';
+    return (
+      <TouchableOpacity 
+        onPress={() => OnPressOption(item)}
+        style={{
+          display: 'flex',
+          flexDirection: 'row',
+          gap: 8,
+          borderWidth: 2.5,
+          padding: 10,
+          margin: 10,
+          marginTop: 15,
+          borderRadius: 8,
+          alignItems: 'center',
+          backgroundColor: isLogout ? '#ff4d4d' : 'transparent', 
+          borderColor: isLogout ? '#ff4d4d' : '#ccc',          
+        }}
+      >
+        <Ionicons name={item.icon} size={34} color={isLogout ? '#fff' : Colors.PRIMARY} />
+        <Text style={{
+          fontSize: 20,
+          color: isLogout ? '#fff' : '#000',  // бял текст за logout
+          fontWeight: isLogout ? 'bold' : 'normal',
+        }}>{item.name}</Text>
+      </TouchableOpacity>
+    )
+  }}
+/>
     </View>
   )
 }

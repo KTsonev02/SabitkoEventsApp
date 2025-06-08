@@ -7,7 +7,6 @@ import * as Sharing from 'expo-sharing';
 import { router } from 'expo-router';
 import Colors from '@/app/constants/Colors';
 
-// Тип за събитията
 type EventData = {
   id: string;
   name: string;
@@ -25,57 +24,72 @@ type EventData = {
 
 const EventCard = ({ event, hideDetailsButton = false }: { event: EventData; hideDetailsButton?: boolean }) => {
   const { user } = useContext(AuthContext);
-  const [isRegistered, setIsRegistered] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // useEffect(() => {
-  //   const checkRegistration = async () => {
-  //     if (!user?.email) return;
-  //     try {
-  //       const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/event-register?email=${user.email}`);
-  //       const data = await res.json();
-  //       setIsRegistered(data.isRegistered); // очаква се бекендът да връща { isRegistered: true/false }
-  //     } catch (error) {
-  //       console.error('Error checking registration:', error);
-  //     }
-  //   };
-  //   checkRegistration();
-  // }, [event.id, user?.email]);
+  useEffect(() => {
+    checkFavoriteStatus();
+  }, [user]);
 
-  // const handleRegistration = async () => {
-  //   if (!user?.email) {
-  //     Alert.alert('Грешка', 'Трябва да сте влезли в системата');
-  //     return;
-  //   }
+  const checkFavoriteStatus = async () => {
+    if (!user?.email) return;
 
-  //   setLoading(true);
-  //   try {
-  //     if (isRegistered) {
-  //       const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/event-register?email=${user.email}&eventId=${event.id}`, {
-  //         method: 'DELETE',
-  //         headers: { 'Content-Type': 'application/json' },
-  //         body: JSON.stringify({ eventId: event.id, userEmail: user.email }),
-  //       });
-  //       if (!res.ok) throw new Error('Неуспешно отписване');
-  //       setIsRegistered(false);
-  //       Alert.alert('Успех', 'Регистрацията е отменена');
-  //     } else {
-  //       const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/event-register?email=${user.email}&eventId=${event.id}`, {
-  //         method: 'POST',
-  //         headers: { 'Content-Type': 'application/json' },
-  //         body: JSON.stringify({ eventId: event.id, userEmail: user.email }),
-  //       });
-  //       if (!res.ok) throw new Error('Неуспешна регистрация');
-  //       setIsRegistered(true);
-  //       Alert.alert('Успех', 'Успешна регистрация!');
-  //     }
-  //   } catch (error) {
-  //     console.error('Registration error:', error);
-  //     Alert.alert('Грешка', 'Неуспешна операция');
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+    try {
+      const url = `${process.env.EXPO_PUBLIC_HOST_URL}/events?action=checkFavorite&userId=${user.email}&eventId=${event.id}`;
+      const response = await fetch(url);
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(`Expected JSON but got: ${text.substring(0, 100)}...`);
+      }
+
+      const data = await response.json();
+      if (typeof data.isFavorite !== 'boolean') throw new Error('Invalid response format');
+
+      setIsFavorite(data.isFavorite);
+    } catch (error) {
+      console.error('Error checking favorite status:', error);
+      Alert.alert('Error', 'Failed to check favorite status');
+    }
+  };
+
+  const toggleFavorite = async () => {
+    if (!user?.email) {
+      Alert.alert('Error', 'You must be logged in');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const url = `${process.env.EXPO_PUBLIC_HOST_URL}/events?action=toggleFavorite`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId: event.id,
+          userId: user.email,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Server responded with ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+      if (typeof data.isFavorite !== 'boolean') throw new Error('Invalid response format');
+
+      setIsFavorite(data.isFavorite);
+      Alert.alert('Success', data.isFavorite ? 'Event added to favorites' : 'Event removed from favorites');
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      Alert.alert('Error', 'Operation failed. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const shareEvent = async () => {
     try {
@@ -88,11 +102,11 @@ const EventCard = ({ event, hideDetailsButton = false }: { event: EventData; hid
           mimeType: 'image/jpeg',
         });
       } else {
-        Alert.alert('Грешка', 'Функцията за споделяне не е налична');
+        Alert.alert('Error', 'Sharing feature not available');
       }
     } catch (error) {
       console.error('Sharing error:', error);
-      Alert.alert('Грешка', 'Неуспешно споделяне');
+      Alert.alert('Error', 'Sharing failed');
     }
   };
 
@@ -100,7 +114,7 @@ const EventCard = ({ event, hideDetailsButton = false }: { event: EventData; hid
     <View style={styles.container}>
       <Image source={{ uri: event.bannerUrl }} style={styles.banner} />
       <Text style={styles.title}>{event.name}</Text>
-      <Text style={styles.organizer}>Организатор: {event.email}</Text>
+      <Text style={styles.organizer}>Organizer: {event.email}</Text>
       <Text style={styles.category}>{event.category}</Text>
 
       <View style={styles.detailRow}>
@@ -117,37 +131,47 @@ const EventCard = ({ event, hideDetailsButton = false }: { event: EventData; hid
 
       <View style={styles.buttonsContainer}>
         <TouchableOpacity style={[styles.button, styles.shareButton]} onPress={shareEvent}>
-          <Text style={styles.shareButtonText}>Сподели</Text>
+          <Text style={styles.shareButtonText}>Share</Text>
         </TouchableOpacity>
-{/* 
+
         <TouchableOpacity
           style={[
             styles.button,
-            isRegistered ? styles.unregisterButton : styles.registerButton
+            isFavorite ? styles.favoriteButtonActive : styles.favoriteButtonInactive
           ]}
-          onPress={handleRegistration}
+          onPress={toggleFavorite}
           disabled={loading}
         >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.registerButtonText}>
-              {isRegistered ? 'Отмени' : 'Регистрирай се'}
-            </Text>
+            <>
+              <Ionicons
+                name={isFavorite ? "heart" : "heart-outline"}
+                size={16}
+                color="#fff"
+                style={styles.favoriteIcon}
+              />
+              <Text style={styles.favoriteButtonText}>
+                {isFavorite ? 'Favorite' : 'Add'}
+              </Text>
+            </>
           )}
-        </TouchableOpacity> */}
+        </TouchableOpacity>
       </View>
 
       {!hideDetailsButton && (
-        <TouchableOpacity style={styles.editButton} onPress={() => router.push(`../event/${event.id}`)}>
-          <Text style={styles.editButtonText}>Виж детайли</Text>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => router.push(`../event/${event.id}`)}
+        >
+          <Text style={styles.editButtonText}>See details</Text>
         </TouchableOpacity>
       )}
     </View>
   );
 };
 
-// Стилове
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#fff',
@@ -162,69 +186,85 @@ const styles = StyleSheet.create({
   },
   banner: {
     width: '100%',
-    height: 180,
+    height: 200,
     borderRadius: 8,
+    borderWidth: 5,
+    marginBottom: 10,
   },
   title: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginTop: 10,
+    marginBottom: 5,
+    color: '#333',
   },
   organizer: {
     fontSize: 14,
     color: 'gray',
-    marginTop: 5,
+    marginBottom: 5,
   },
   category: {
     fontSize: 14,
-    color: 'gray',
-    marginTop: 5,
+    color: Colors.PRIMARY,
+    fontWeight: '500',
+    marginBottom: 10,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 5,
+    marginBottom: 5,
   },
   detailText: {
     marginLeft: 5,
+    fontSize: 14,
+    color: '#555',
   },
   buttonsContainer: {
     marginTop: 15,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 10,
   },
   button: {
     flex: 1,
-    padding: 12,
+    padding: 10,
     borderRadius: 8,
-    margin: 5,
+    marginHorizontal: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   shareButton: {
     backgroundColor: Colors.GRAY,
   },
   shareButtonText: {
-    textAlign: 'center',
     color: '#333',
+    fontSize: 14,
   },
-  registerButton: {
-    backgroundColor: Colors.PRIMARY,
+  favoriteButtonInactive: {
+    backgroundColor: Colors.GRAY,
   },
-  unregisterButton: {
-    backgroundColor: Colors.SECONDARY,
+  favoriteButtonActive: {
+    backgroundColor: Colors.RED,
   },
-  registerButtonText: {
-    textAlign: 'center',
+  favoriteButtonText: {
     color: '#fff',
+    fontSize: 14,
+    marginLeft: 5,
+  },
+  favoriteIcon: {
+    marginRight: 5,
   },
   editButton: {
-    marginTop: 20,
-    backgroundColor: '#007BFF',
+    backgroundColor: Colors.PRIMARY,
     borderRadius: 8,
-    padding: 10,
+    padding: 12,
+    marginTop: 5,
   },
   editButtonText: {
     textAlign: 'center',
     color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
 

@@ -71,86 +71,92 @@ export default function BuyTicketsScreen() {
     });
   };
 
-  const buySeats = async () => {
-    if (selectedSeats.length === 0) {
-      Alert.alert("Изберете място", "Моля, изберете поне едно свободно място!");
+const buySeats = async () => {
+  if (selectedSeats.length === 0) {
+    Alert.alert("Изберете място", "Моля, изберете поне едно свободно място!");
+    return;
+  }
+
+  const totalPrice = selectedSeats.length * parseFloat(event.price);
+
+  try {
+    if (totalPrice === 0) {
+      // Ако цената е 0, пропускаме плащането и директно резервацията
+      await confirmBooking();
       return;
     }
 
-    const totalPrice = selectedSeats.length * parseFloat(event.price);
-
-    try {
-      // Създаваме Payment Intent чрез Stripe сървъра
-      const res = await fetch(
-        `${process.env.EXPO_PUBLIC_STRIPE_HOST_URL}/create-payment-intent`, // Използваме новата променлива
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: totalPrice }),
-        }
-      );
-
-      const data = await res.json();
-      const clientSecret = data.clientSecret;
-
-      if (!clientSecret) {
-        throw new Error("Няма clientSecret");
+    // Създаваме Payment Intent чрез Stripe сървъра
+    const res = await fetch(
+      `${process.env.EXPO_PUBLIC_STRIPE_HOST_URL}/create-payment-intent`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: totalPrice }),
       }
+    );
 
-      if (Platform.OS === "web") {
-        // Уеб: Използваме Stripe.js
-        const cardElement = elements?.getElement(CardElement);
-        if (!cardElement) {
-          Alert.alert("Грешка", "Моля, въведете данни за картата.");
-          return;
-        }
+    const data = await res.json();
+    const clientSecret = data.clientSecret;
 
-        const result = await stripeWeb?.confirmCardPayment(clientSecret, {
-          payment_method: {
-            card: cardElement,
-          },
-        });
-
-        if (!result) {
-          Alert.alert("Грешка", "Неуспешно плащане.");
-          return;
-        }
-
-        const { error, paymentIntent } = result;
-
-        if (error) {
-          console.error("❌ Payment error:", error);
-          Alert.alert("Грешка", "Неуспешно плащане.");
-        } else {
-          await confirmBooking();
-        }
-      } else {
-        // Мобилно устройство: Използваме Payment Sheet
-        const { error: initError } = await stripeNative.initPaymentSheet({
-          paymentIntentClientSecret: clientSecret,
-          merchantDisplayName: "Sabitko Events",
-        });
-
-        if (initError) {
-          console.error("❌ Payment Sheet initialization error:", initError);
-          Alert.alert("Грешка", "Неуспешна инициализация на плащането.");
-          return;
-        }
-
-        const { error: presentError } = await presentPaymentSheet();
-
-        if (presentError) {
-          console.error("❌ Payment Sheet presentation error:", presentError);
-          Alert.alert("Грешка", "Неуспешно плащане.");
-        } else {
-          await confirmBooking();
-        }
-      }
-    } catch (err) {
-      console.error("❌ Stripe error:", err);
-      Alert.alert("Грешка", "Проблем с плащането.");
+    if (!clientSecret) {
+      throw new Error("Няма clientSecret");
     }
-  };
+
+    if (Platform.OS === "web") {
+      // Уеб: Използваме Stripe.js
+      const cardElement = elements?.getElement(CardElement);
+      if (!cardElement) {
+        Alert.alert("Грешка", "Моля, въведете данни за картата.");
+        return;
+      }
+
+      const result = await stripeWeb?.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+        },
+      });
+
+      if (!result) {
+        Alert.alert("Грешка", "Неуспешно плащане.");
+        return;
+      }
+
+      const { error, paymentIntent } = result;
+
+      if (error) {
+        console.error("❌ Payment error:", error);
+        Alert.alert("Грешка", "Неуспешно плащане.");
+      } else {
+        await confirmBooking();
+      }
+    } else {
+      // Мобилно устройство: Използваме Payment Sheet
+      const { error: initError } = await stripeNative.initPaymentSheet({
+        paymentIntentClientSecret: clientSecret,
+        merchantDisplayName: "Sabitko Events",
+      });
+
+      if (initError) {
+        console.error("❌ Payment Sheet initialization error:", initError);
+        Alert.alert("Грешка", "Неуспешна инициализация на плащането.");
+        return;
+      }
+
+      const { error: presentError } = await presentPaymentSheet();
+
+      if (presentError) {
+        console.error("❌ Payment Sheet presentation error:", presentError);
+        Alert.alert("Грешка", "Неуспешно плащане.");
+      } else {
+        await confirmBooking();
+      }
+    }
+  } catch (err) {
+    console.error("❌ Stripe error:", err);
+    Alert.alert("Грешка", "Проблем с плащането.");
+  }
+};
 
   const confirmBooking = async () => {
     try {

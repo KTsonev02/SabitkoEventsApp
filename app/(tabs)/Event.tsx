@@ -86,7 +86,7 @@ export default function Event() {
   const GetUserEvents = async () => {
     setLoading(true);
     try {
-      const result = await axios.get(`${process.env.EXPO_PUBLIC_HOST_URL}/event-register?email=${user?.email}`);
+      const result = await axios.get(`${process.env.EXPO_PUBLIC_HOST_URL}/events?action=getFavorites&userId=${user.email}`);
       const eventsWithCategory = result.data.map((event: any) => ({
         ...event,
         category: event.category || 'General',
@@ -204,7 +204,7 @@ export default function Event() {
               <Text style={[styles.tabText, selectedTab === 0 && styles.activeTab]}>Upcoming</Text>
             </Pressable>
             <Pressable onPress={() => setSelectedTab(1)}>
-              <Text style={[styles.tabText, selectedTab === 1 && styles.activeTab]}>Registered</Text>
+              <Text style={[styles.tabText, selectedTab === 1 && styles.activeTab]}>Favorited</Text>
             </Pressable>
           </View>
 

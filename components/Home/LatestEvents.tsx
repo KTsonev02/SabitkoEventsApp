@@ -43,7 +43,7 @@ const LatestEvents = () => {
                 setLatestEvents(latest);
             } catch (error) {
                 console.error("Fetch error:", error);
-                setError("Грешка при зареждане на събития.");
+                setError("Error loading events.");
             } finally {
                 setLoading(false);
             }
@@ -70,13 +70,13 @@ const LatestEvents = () => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.header}>Последно добавени събития</Text>
+            <Text style={styles.header}>Recently added events</Text>
 
             {loading && <ActivityIndicator size="large" color="#2980b9" />}
             {error && <Text style={styles.errorText}>{error}</Text>}
 
             {!loading && latestEvents.length === 0 && (
-                <Text style={styles.noEventsText}>Няма събития.</Text>
+                <Text style={styles.noEventsText}>No events.</Text>
             )}
 
             <FlatList

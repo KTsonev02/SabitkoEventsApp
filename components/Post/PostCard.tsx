@@ -1,5 +1,5 @@
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { likePost, unlikePost } from './LikePost';
 import { AuthContext } from '@/context/AuthContext';
@@ -13,7 +13,7 @@ interface PostCardProps {
     username: string;
     userprofileimage: string;
     email: string;
-    useremail: string;  // новото поле за имейла на създателя
+    useremail: string;  // имейл на създателя
     imageurl: string;
     createdon: string;
     likes_count: number;
@@ -24,7 +24,22 @@ interface PostCardProps {
 
 export default function PostCard({ post, onDelete }: PostCardProps) {
   const [likes, setLikes] = useState(post.likes_count);
+  const [isLiked, setIsLiked] = useState(false);
   const { user } = useContext(AuthContext);
+
+  useEffect(() => {
+    if (!user?.email) return;
+
+    // fetch дали текущият user е лайкнал поста
+    fetch(`/api/check-like?postId=${post.id}&userEmail=${user.email}`)
+      .then(res => res.json())
+      .then(data => {
+        setIsLiked(data.liked); // backend връща { liked: true/false }
+      })
+      .catch(err => {
+        console.error('Error fetching like status:', err);
+      });
+  }, [post.id, user?.email]);
 
   const handleLike = async () => {
     try {
@@ -33,6 +48,7 @@ export default function PostCard({ post, onDelete }: PostCardProps) {
       }
       await likePost(post.id, user.email);
       setLikes(likes + 1);
+      setIsLiked(true);
     } catch (error) {
       console.error("Error liking post:", error);
     }
@@ -45,12 +61,13 @@ export default function PostCard({ post, onDelete }: PostCardProps) {
       }
       await unlikePost(post.id, user.email);
       setLikes(likes - 1);
+      setIsLiked(false);
     } catch (error) {
       console.error("Error unliking post:", error);
     }
   };
 
-  const canDelete = user?.email === post.useremail || user?.role === 'admin'; // Проверка за имейл
+  const canDelete = user?.email === post.useremail || user?.role === 'admin'; 
 
   return (
     <View style={styles.container}>
@@ -66,22 +83,23 @@ export default function PostCard({ post, onDelete }: PostCardProps) {
       )}
 
       <View style={styles.footer}>
-        <TouchableOpacity onPress={handleLike} style={styles.likeButton}>
-          <AntDesign name="like1" size={24} color="white" />
-          <Text style={styles.buttonText}>Like</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={handleUnlike} style={styles.unlikeButton}>
-          <AntDesign name="dislike1" size={24} color="white" />
-          <Text style={styles.buttonText}>Unlike</Text>
-        </TouchableOpacity>
-
+        {isLiked ? (
+          <TouchableOpacity onPress={handleUnlike} style={styles.unlikeButton}>
+            <AntDesign name="dislike1" size={24} color="white" />
+            <Text style={styles.buttonText}>Unlike</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={handleLike} style={styles.likeButton}>
+            <AntDesign name="like1" size={24} color="white" />
+            <Text style={styles.buttonText}>Like</Text>
+          </TouchableOpacity>
+        )}
         <Text style={styles.likes}>Rate: {likes}</Text> 
       </View>
 
       <PostComments 
-        postId={post.id} 
-        userId={user?.id || ''} 
+        postId={post.id}
+        userId={String(user?.id || '')}
         currentUserUsername={user?.username || ''}
         initialCommentCount={post.comment_count}
       />

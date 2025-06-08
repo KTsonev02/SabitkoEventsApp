@@ -100,9 +100,9 @@ const LastEvents = () => {
             const today = new Date();
             const diffDays = Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-            if (diffDays === 0) return 'Днес';
-            if (diffDays === 1) return 'Утре';
-            if (diffDays < 7) return `След ${diffDays} дни`;
+            if (diffDays === 0) return 'Today';
+            if (diffDays === 1) return 'Tomorrow';
+            if (diffDays < 7) return `After ${diffDays} days`;
             
             return eventDate.toLocaleDateString('bg-BG', { 
                 day: 'numeric', 
@@ -137,7 +137,7 @@ const LastEvents = () => {
     if (loading) {
         return (
             <View style={styles.container}>
-                <Text style={styles.header}>Предстоящи събития</Text>
+                <Text style={styles.header}>Upcoming events</Text>
                 <ActivityIndicator size="large" color="#0000ff" />
             </View>
         );
@@ -145,7 +145,7 @@ const LastEvents = () => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.header}>Предстоящи събития</Text>
+            <Text style={styles.header}>Upcoming events</Text>
             
             {error && (
                 <Text style={styles.errorText}>

@@ -39,8 +39,8 @@ export default function AllPostsPage() {
 
       {/* Заглавие и подзаглавие */}
       <View style={styles.headerContainer}>
-        <Text style={styles.title}>🌟 Всички постове</Text>
-        <Text style={styles.subtitle}>Открий най-новото от света на събитията</Text>
+        <Text style={styles.title}>🌟 All posts 🌟</Text>
+        <Text style={styles.subtitle}>Discover the latest from the world of events</Text>
         <View style={styles.divider} />
       </View>
 

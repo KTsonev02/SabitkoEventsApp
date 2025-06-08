@@ -14,7 +14,7 @@ let isClientConnected = false;
 async function ensureConnection() {
   if (!isClientConnected) {
     try {
-      await client.connect();  // Опитва се да се свърже към базата
+      await client.connect();
       isClientConnected = true;
       console.log("✅ Successfully connected to the database");
     } catch (error) {
@@ -24,36 +24,79 @@ async function ensureConnection() {
   }
 }
 
-
 export async function POST(request: Request) {
   const url = new URL(request.url);
   const action = url.searchParams.get("action");
 
-  if (action === "createPaymentIntent") {
+  // Нова логика за добавяне/премахване на любими
+  if (action === "toggleFavorite") {
     try {
-      const { amount } = await request.json();
-
-      if (!amount || typeof amount !== "number") {
-        return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
+      const { eventId, userId } = await request.json();
+      
+      if (!eventId || !userId) {
+        return NextResponse.json({ error: "Missing eventId or userId" }, { status: 400 });
       }
 
-      const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY!);
+      await ensureConnection();
 
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: amount * 100, // Convert to cents
-        currency: "bgn", // Change to your currency
-        automatic_payment_methods: { enabled: true },
-      });
+      // Проверка дали събитието вече е в любими
+      const checkResult = await client.query(
+        `SELECT id FROM favorites WHERE event_id = $1 AND user_id = $2`,
+        [eventId, userId]
+      );
 
-      return NextResponse.json({
-        clientSecret: paymentIntent.client_secret,
-      });
+      if (checkResult.rows.length > 0) {
+        // Премахване от любими
+        await client.query(
+          `DELETE FROM favorites WHERE id = $1`,
+          [checkResult.rows[0].id]
+        );
+        return NextResponse.json({ isFavorite: false }, { status: 200 });
+      } else {
+        // Добавяне към любими
+        const insertResult = await client.query(
+          `INSERT INTO favorites (event_id, user_id, created_at) 
+           VALUES ($1, $2, NOW()) RETURNING id`,
+          [eventId, userId]
+        );
+        return NextResponse.json({ isFavorite: true }, { status: 200 });
+      }
     } catch (error) {
-      console.error("❌ Stripe Payment Intent Error:", error);
-      return NextResponse.json({ error: "Failed to create Payment Intent" }, { status: 500 });
+      console.error("❌ Favorite toggle error:", error);
+      return NextResponse.json({ error: "Failed to toggle favorite" }, { status: 500 });
     }
   }
 
+  if (action === "createPaymentIntent") {
+  try {
+    const { amount } = await request.json();
+
+    if (amount === 0) {
+      return NextResponse.json({ clientSecret: null, free: true }, { status: 200 });
+    }
+
+    if (!amount || typeof amount !== "number") {
+      return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
+    }
+
+    const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY!);
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount * 100, // Convert to cents
+      currency: "bgn",
+      automatic_payment_methods: { enabled: true },
+    });
+
+    return NextResponse.json({
+      clientSecret: paymentIntent.client_secret,
+    });
+  } catch (error) {
+    console.error("❌ Stripe Payment Intent Error:", error);
+    return NextResponse.json({ error: "Failed to create Payment Intent" }, { status: 500 });
+  }
+}
+
+  // Оригинална логика за създаване на събитие
   const {
     name, bannerUrl, location, link,
     eventDate, eventTime, email, createdon,
@@ -64,24 +107,22 @@ export async function POST(request: Request) {
 
   try {
     // 1. Създаваме събитието
-    const eventResult = await client.query(`
-      INSERT INTO events VALUES(
-        DEFAULT,
-        '${name}',
-        '${location}',
-        '${link}',
-        '${bannerUrl}',
-        '${eventDate}',
-        '${eventTime}',
-        '${email}',
-        '${createdon}',
-        ${lat !== undefined ? lat : null},
-        ${lon !== undefined ? lon : null},
-        '${category}',
-        '${price}',
-        '${total_seats}'
-      ) RETURNING id;
-    `);
+    const eventResult = await client.query(
+      `INSERT INTO events (
+        name, location, link, bannerurl, 
+        event_date, event_time, createdby, createdon,
+        lat, lon, category, price, total_seats
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+      ) RETURNING id`,
+      [
+        name, location, link, bannerUrl,
+        eventDate, eventTime, email, createdon,
+        lat !== undefined ? lat : null, 
+        lon !== undefined ? lon : null,
+        category, price, total_seats
+      ]
+    );
     const eventId = eventResult.rows[0].id;
 
     // 2. Генерираме масив от букви за редовете
@@ -97,10 +138,7 @@ export async function POST(request: Request) {
     for (const row of rows) {
       for (let n = 1; n <= seatsPerRow && count < total; n++) {
         count++;
-        // escape eventId and seat_number safely or use parametrизация
-        seatValues.push(
-          `(${eventId}, '${row}${n}')`
-        );
+        seatValues.push(`(${eventId}, '${row}${n}')`);
       }
     }
 
@@ -119,23 +157,57 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to create event and seats" }, { status: 500 });
   }
 }
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const id = url.searchParams.get("id");
     const action = url.searchParams.get('action');
+    const userId = url.searchParams.get('userId');
     await ensureConnection();
 
+    // Логика за извличане на любими събития
+    if (action === 'getFavorites') {
+      if (!userId) {
+        return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
+      }
 
+      const result = await client.query(
+        `SELECT e.*, u.name as username 
+         FROM events e
+         JOIN favorites f ON e.id = f.event_id
+         JOIN users u ON e.createdby = u.email
+         WHERE f.user_id = $1
+         ORDER BY e.event_date ASC`,
+        [userId]
+      );
+
+      return NextResponse.json(result.rows, { status: 200 });
+    }
+
+    // Проверка дали събитието е в любими
+    if (action === 'checkFavorite') {
+      const eventId = url.searchParams.get('eventId');
+      if (!userId || !eventId) {
+        return NextResponse.json({ error: 'Missing userId or eventId' }, { status: 400 });
+      }
+
+      const result = await client.query(
+        `SELECT id FROM favorites WHERE event_id = $1 AND user_id = $2`,
+        [eventId, userId]
+      );
+
+      return NextResponse.json({ isFavorite: result.rows.length > 0 }, { status: 200 });
+    }
+
+    // Логика за билетите на потребителя
     if (action === 'getTickets') {
-      const userId = url.searchParams.get('userId');
       if (!userId) {
         return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
       }
     
       const result = await client.query(
-        `
-        SELECT 
+        `SELECT 
           t.id, 
           t.event_id,
           e.name AS event_name, 
@@ -148,14 +220,13 @@ export async function GET(request: Request) {
         JOIN events e ON t.event_id = e.id
         LEFT JOIN seats s ON t.seat_id = s.id
         WHERE t.user_id = $1
-        ORDER BY e.event_date ASC
-        `,
+        ORDER BY e.event_date ASC`,
         [userId]
       );
     
       const tickets = result.rows.map((row: any) => ({
         id: row.id,
-        eventId: row.event_id, // Map event_id to eventId
+        eventId: row.event_id,
         eventName: row.event_name,
         eventDate: row.event_date,
         eventImage: row.event_image,  
@@ -166,6 +237,7 @@ export async function GET(request: Request) {
     
       return NextResponse.json(tickets, { status: 200 });
     }
+
     // Ако има подаден ID параметър => Връщаме едно събитие + неговите седалки
     if (id) {
       const eventId = parseInt(id, 10);
@@ -228,7 +300,7 @@ export async function PATCH(request: Request) {
     try {
         const url = new URL(request.url);
         const id = url.searchParams.get("id"); 
-        const action = url.searchParams.get("action"); // <- ВЗИМА action
+        const action = url.searchParams.get("action");
         const eventId = parseInt(id || "", 10);
 
         if (isNaN(eventId)) {
@@ -238,7 +310,7 @@ export async function PATCH(request: Request) {
         const body = await request.json();
         const { name, bannerUrl, location, eventDate, eventTime, category, price, totalSeats, userId, seatIds } = body;
 
-        // --- ЛОГИКА ЗА КУПУВАНЕ НА МЕСТА ---
+        // Логика за купуване на места
         if (action === 'buy') {
             if (!userId || !seatIds || !Array.isArray(seatIds)) {
                 return NextResponse.json({ error: 'Missing userId or seatIds' }, { status: 400 });
@@ -261,7 +333,7 @@ export async function PATCH(request: Request) {
                 return NextResponse.json({ error: 'One or more seats are already taken' }, { status: 409 });
             }
 
-            // Създаваме билети (ако имаш tickets таблица)
+            // Създаваме билети
             for (const seatId of seatIds) {
                 await client.query(
                     `INSERT INTO tickets (user_id, event_id, seat_id) VALUES ($1, $2, $3)`,
@@ -271,7 +343,6 @@ export async function PATCH(request: Request) {
 
             return NextResponse.json({ message: 'Seats successfully reserved!' }, { status: 200 });
         }
-        // --- КРАЙ НА ЛОГИКАТА ЗА КУПУВАНЕ ---
 
         if (!name || !location || !eventDate || !eventTime || !category) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -293,7 +364,6 @@ export async function PATCH(request: Request) {
             RETURNING *`,
             [name, bannerUrl, location, eventDate, eventTime, category, price, totalSeats, eventId]
         );
-        console.log('Update parameters:', [name, bannerUrl, location, eventDate, eventTime, category, price, totalSeats, eventId]);
 
         if (updateResult.rows.length === 0) {
             return NextResponse.json({ error: 'Event not found' }, { status: 404 });
@@ -306,6 +376,7 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: 'Failed to update event' }, { status: 500 });
     }
 }
+
 export async function DELETE(request: Request) {
     const { id } = await request.json();
 
@@ -314,9 +385,10 @@ export async function DELETE(request: Request) {
     }
 
     await ensureConnection();
-    const result = await client.query(`
-        DELETE FROM events WHERE id = ${id} RETURNING *;
-    `);
+    const result = await client.query(
+        `DELETE FROM events WHERE id = $1 RETURNING *`,
+        [id]
+    );
 
     if (result.rows.length === 0) {
         return Response.json({ error: "Event not found" }, { status: 404 });

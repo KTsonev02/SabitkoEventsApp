@@ -60,9 +60,9 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onSelectLocation }) => 
       console.error('LocationIQ fetch error:', error);
       if (axios.isAxiosError(error)) {
         if (error.response?.status === 429) {
-          Alert.alert('Грешка', 'Прекалено много заявки. Моля, изчакайте.');
+          Alert.alert('Error', 'Too many requests. Please wait.');
         } else {
-          Alert.alert('Грешка', 'Възникна проблем при търсенето на локации.');
+          Alert.alert('Error', 'There was a problem searching for locations.');
         }
       }
     } finally {
@@ -80,13 +80,13 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onSelectLocation }) => 
     <View style={styles.container}>
       <TextInput
         style={styles.input}
-        placeholder="Търсене на място (град, адрес...)"
+        placeholder="Search for a place (city, address...)"
         placeholderTextColor="#999"
         value={query}
         onChangeText={setQuery}
       />
       
-      {loading && <Text style={styles.loadingText}>Търсене на локации...</Text>}
+      {loading && <Text style={styles.loadingText}>Searching for locations...</Text>}
 
       {!loading && results.length > 0 && (
         <FlatList

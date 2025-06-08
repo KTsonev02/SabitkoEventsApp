@@ -7,12 +7,24 @@
       "@/*": [
         "./*"
       ]
-    }
+    },
+    "incremental": true,
+    "module": "esnext",
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-, "stripe-server.ts", "server/stripe-server.mjs"  ]
+    "expo-env.d.ts",
+    "server/stripe-server.mjs",
+    "stripe-server.ts",
+    ".next/types/**/*.ts"
+  ]
 }

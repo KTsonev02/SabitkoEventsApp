@@ -24,7 +24,7 @@ export default function LatestPost() {
             const result = await axios.get(`${process.env.EXPO_PUBLIC_HOST_URL}/post?club=0&orderField=${orderField}`);
             setPosts(result.data);
         } catch (error) {
-            console.error('Грешка при зареждане на постовете:', error);
+            console.error('Error loading posts:', error);
         }
         
         setLoading(false);
