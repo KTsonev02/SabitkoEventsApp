@@ -73,7 +73,7 @@ export default function BuyTicketsScreen() {
 
 const buySeats = async () => {
   if (selectedSeats.length === 0) {
-    Alert.alert("Изберете място", "Моля, изберете поне едно свободно място!");
+    Alert.alert("Select a seat", "Please select at least one available seat!");
     return;
   }
 
@@ -81,12 +81,12 @@ const buySeats = async () => {
 
   try {
     if (totalPrice === 0) {
-      // Ако цената е 0, пропускаме плащането и директно резервацията
+      // // If the price is 0, we skip the payment and directly book
       await confirmBooking();
       return;
     }
 
-    // Създаваме Payment Intent чрез Stripe сървъра
+    // We create a payment intent through the Stripe server
     const res = await fetch(
       `${process.env.EXPO_PUBLIC_STRIPE_HOST_URL}/create-payment-intent`,
       {
@@ -166,7 +166,7 @@ const buySeats = async () => {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userId: user.id,
+          userId: user!.id,
             seatIds: selectedSeats.map((s) => s.id),
           }),
         }

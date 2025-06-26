@@ -1,73 +1,63 @@
-import { View, Text, FlatList, RefreshControl } from 'react-native'
-import React, { useState, useCallback, useEffect, useContext } from 'react'
-import Header from '@/components/Home/Header'
-import EventSlider from '@/components/Home/EventSlider'
-import LatestPost from '@/components/Home/LatestPost'
-import LatestEvents from '@/components/Home/LatestEvents'
-import NotificationsList from '@/components/NotificationsList'
-import { AuthContext } from '@/context/AuthContext'
+import { View, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
+import React, { useState, useCallback, useEffect, useContext, Suspense, lazy } from 'react';
+import Header from '@/components/Home/Header';
+import NotificationsList from '@/components/NotificationsList';
+import { AuthContext } from '@/context/AuthContext';
+
+// 👉 Lazy компоненти
+const EventSlider = lazy(() => import('@/components/Home/EventSlider'));
+const LatestEvents = lazy(() => import('@/components/Home/LatestEvents'));
+const LatestPost = lazy(() => import('@/components/Home/LatestPost'));
 
 export default function Home() {
-  const [refreshing, setRefreshing] = useState(false)
-  const { user } = useContext(AuthContext)
-  const [notifications, setNotifications] = useState<any[]>([])
+  const [refreshing, setRefreshing] = useState(false);
+  const { user } = useContext(AuthContext);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
   const fetchNotifications = useCallback(async () => {
-    if (!user) return
-    
+    if (!user) return;
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_HOST_URL}/notifications?userId=${user.id}`)
-      const data = await response.json()
-      setNotifications(data)
+      const response = await fetch(`${process.env.EXPO_PUBLIC_HOST_URL}/notifications?userId=${user.id}`);
+      const data = await response.json();
+      setNotifications(data);
     } catch (err) {
-      console.error('Failed to fetch notifications:', err)
+      console.error('Failed to fetch notifications:', err);
     }
-  }, [user])
+  }, [user]);
 
   useEffect(() => {
-    fetchNotifications()
-  }, [fetchNotifications])
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   const onRefresh = useCallback(async () => {
-    setRefreshing(true)
+    setRefreshing(true);
     try {
-      // Презареждаме всички данни, включително нотификациите
       await Promise.all([
         fetchNotifications(),
-        // Тук можете да добавите и други fetch заявки за EventSlider, LatestEvents и т.н.
-      ])
+      ]);
     } finally {
-      setRefreshing(false)
+      setRefreshing(false);
     }
-  }, [fetchNotifications])
+  }, [fetchNotifications]);
 
   return (
     <FlatList
       data={[]}
       renderItem={null}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-        />
-      }
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       ListHeaderComponent={
         <View style={{ padding: 20, paddingTop: 40 }}>
           <Header />
-          <NotificationsList 
-            notifications={notifications}
-            onRefresh={fetchNotifications}
-          />
-          <View>
+          <NotificationsList notifications={notifications} onRefresh={fetchNotifications} />
+
+          {/* 👉 Lazy зареждане на тежките секции */}
+          <Suspense fallback={<ActivityIndicator size="large" color="#3498db" />}>
             <EventSlider />
-            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 10 }}></Text>
             <LatestEvents />
-          </View>
-          <View style={{ marginTop: 30, paddingHorizontal: 10 }}>
             <LatestPost />
-          </View>
+          </Suspense>
         </View>
       }
     />
-  )
+  );
 }

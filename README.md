@@ -1,6 +1,6 @@
-# Welcome to your Expo app 👋
+SabitkoEventsApp is a mobile application built with React Native (Expo) that allows users to discover, create, and book events. It features event browsing and filtering, ticket reservations, interactive maps, real-time notifications, and role-based access (admin, organizer, user). The app uses NileDB as its primary database and integrates with services like Firebase for authentication, Stripe for payments, Cloudinary for image uploads, and LocationIQ for geolocation.
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+![SignUpScreen](/assets/images/sign-up.png)
 
 ## Get started
 
@@ -33,18 +33,3 @@ When you're ready, run:
 npm run reset-project
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.

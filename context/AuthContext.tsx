@@ -7,8 +7,8 @@ interface User {
   name: string;
   email: string;
   image: string;
-  username: string; // ако не съществува, добави го
-  role: 'admin' | 'organizer' | 'user'; // добави това поле
+  username: string; 
+  role: 'admin' | 'organizer' | 'user'; 
 }
 
 interface AuthContextType {
