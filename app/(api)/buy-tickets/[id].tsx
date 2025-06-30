@@ -51,21 +51,19 @@ export default function BuyTicketsScreen() {
       setEvent(data);
     } catch (error) {
       console.error("❌ Error loading event:", error);
-      Alert.alert("Грешка", "Неуспешно зареждане на събитието.");
+      Alert.alert("Error", "Failed to load event.");
     } finally {
       setLoading(false);
     }
   };
 
   const toggleSeat = (seat: any) => {
-    if (seat.user_id) return; // ако е заето
+    if (seat.user_id) return; 
     setSelectedSeats(prev => {
       const idx = prev.findIndex(s => s.id === seat.id);
       if (idx >= 0) {
-        // премахваме
         return prev.filter(s => s.id !== seat.id);
       } else {
-        // добавяме
         return [...prev, seat];
       }
     });
@@ -100,14 +98,14 @@ const buySeats = async () => {
     const clientSecret = data.clientSecret;
 
     if (!clientSecret) {
-      throw new Error("Няма clientSecret");
+      throw new Error("None clientSecret");
     }
 
     if (Platform.OS === "web") {
       // Уеб: Използваме Stripe.js
       const cardElement = elements?.getElement(CardElement);
       if (!cardElement) {
-        Alert.alert("Грешка", "Моля, въведете данни за картата.");
+        Alert.alert("Error", "Please enter card details.");
         return;
       }
 
@@ -118,7 +116,7 @@ const buySeats = async () => {
       });
 
       if (!result) {
-        Alert.alert("Грешка", "Неуспешно плащане.");
+        Alert.alert("Error", "Payment failed");
         return;
       }
 
@@ -126,12 +124,11 @@ const buySeats = async () => {
 
       if (error) {
         console.error("❌ Payment error:", error);
-        Alert.alert("Грешка", "Неуспешно плащане.");
+        Alert.alert("Error", "Payment failed");
       } else {
         await confirmBooking();
       }
     } else {
-      // Мобилно устройство: Използваме Payment Sheet
       const { error: initError } = await stripeNative.initPaymentSheet({
         paymentIntentClientSecret: clientSecret,
         merchantDisplayName: "Sabitko Events",
@@ -139,7 +136,7 @@ const buySeats = async () => {
 
       if (initError) {
         console.error("❌ Payment Sheet initialization error:", initError);
-        Alert.alert("Грешка", "Неуспешна инициализация на плащането.");
+        Alert.alert("Error", "Payment initialization failed.");
         return;
       }
 
@@ -147,14 +144,14 @@ const buySeats = async () => {
 
       if (presentError) {
         console.error("❌ Payment Sheet presentation error:", presentError);
-        Alert.alert("Грешка", "Неуспешно плащане.");
+        Alert.alert("Error", "Payment failed.");
       } else {
         await confirmBooking();
       }
     }
   } catch (err) {
     console.error("❌ Stripe error:", err);
-    Alert.alert("Грешка", "Проблем с плащането.");
+    Alert.alert("Error", "Payment problem.");
   }
 };
 
@@ -173,10 +170,10 @@ const buySeats = async () => {
       );
 
       if (!res.ok) throw new Error();
-      Alert.alert("Успех", `Успешно резервирахте ${selectedSeats.length} места!`);
+      Alert.alert("Success", `You have successfully booked. ${selectedSeats.length} places!`);
       router.push("/Tickets");
     } catch {
-      Alert.alert("Грешка", "Неуспешна резервация.");
+      Alert.alert("Erroe", "Unsuccessful reservation.");
     }
   };
 
@@ -190,7 +187,7 @@ const buySeats = async () => {
   if (!event) {
     return (
       <View style={styles.center}>
-        <Text>Събитието не е намерено.</Text>
+        <Text>Event not found.</Text>
       </View>
     );
   }
@@ -206,7 +203,7 @@ const buySeats = async () => {
         {event.event_date} • {event.event_time}
       </Text>
       <Text style={styles.subtitle}>{event.location}</Text>
-      <Text style={styles.price}>Цена на билет: {event.price} лв.</Text>
+      <Text style={styles.price}>Ticket price: {event.price} lv.</Text>
 
       {/* Списък със седалките */}
       <FlatList
@@ -242,7 +239,7 @@ const buySeats = async () => {
 
       {/* Обща цена и бутон купи */}
       <View style={styles.footer}>
-        <Text style={styles.total}>Обща цена: {totalPrice.toFixed(2)} лв.</Text>
+        <Text style={styles.total}>Total price: {totalPrice.toFixed(2)} lv.</Text>
         <View style={{ width: 200, height: 150 }}>
           <Button
             text={`Купи ${selectedSeats.length} билети`}

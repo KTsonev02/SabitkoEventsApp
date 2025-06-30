@@ -37,35 +37,30 @@ export default function PostCard({ post, onDelete }: PostCardProps) {
         setIsLiked(data.liked); // backend връща { liked: true/false }
       })
       .catch(err => {
-        console.error('Error fetching like status:', err);
       });
   }, [post.id, user?.email]);
 
-  const handleLike = async () => {
-    try {
-      if (!user?.email) {
-        throw new Error("You must be logged in to like posts");
-      }
-      await likePost(post.id, user.email);
-      setLikes(likes + 1);
-      setIsLiked(true);
-    } catch (error) {
-      console.error("Error liking post:", error);
-    }
-  };
+const handleLike = async () => {
+  if (!user?.email) return;
+  try {
+    await likePost(post.id, user.email);
+    setLikes(likes + 1);
+    setIsLiked(true);
+  } catch (error) {
+    console.error(error);
+  }
+};
 
-  const handleUnlike = async () => {
-    try {
-      if (!user?.email) {
-        throw new Error("You must be logged in to unlike posts");
-      }
-      await unlikePost(post.id, user.email);
-      setLikes(likes - 1);
-      setIsLiked(false);
-    } catch (error) {
-      console.error("Error unliking post:", error);
-    }
-  };
+const handleUnlike = async () => {
+  if (!user?.email) return;
+  try {
+    await unlikePost(post.id, user.email);
+    setLikes(likes - 1);
+    setIsLiked(false); 
+  } catch (error) {
+    console.error(error);
+  }
+};
 
   const canDelete = user?.email === post.useremail || user?.role === 'admin'; 
 
@@ -83,17 +78,17 @@ export default function PostCard({ post, onDelete }: PostCardProps) {
       )}
 
       <View style={styles.footer}>
-        {isLiked ? (
-          <TouchableOpacity onPress={handleUnlike} style={styles.unlikeButton}>
-            <AntDesign name="dislike1" size={24} color="white" />
-            <Text style={styles.buttonText}>Unlike</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity onPress={handleLike} style={styles.likeButton}>
-            <AntDesign name="like1" size={24} color="white" />
-            <Text style={styles.buttonText}>Like</Text>
-          </TouchableOpacity>
-        )}
+       {isLiked ? (
+  <TouchableOpacity onPress={handleUnlike} style={styles.unlikeButton}>
+    <AntDesign name="dislike1" size={24} color="white" />
+    <Text style={styles.buttonText}>Unlike</Text>
+  </TouchableOpacity>
+) : (
+  <TouchableOpacity onPress={handleLike} style={styles.likeButton}>
+    <AntDesign name="like1" size={24} color="white" />
+    <Text style={styles.buttonText}>Like</Text>
+  </TouchableOpacity>
+)}
         <Text style={styles.likes}>Rate: {likes}</Text> 
       </View>
 

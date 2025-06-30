@@ -36,25 +36,32 @@ app.post('/create-payment-intent', async (req, res) => {
 });
 
 // ⏰ CRON JOB - всяка минута
-cron.schedule('* * * * *', () => {
-  const baseUrl = process.env.EXPO_PUBLIC_HOST_URL;
+cron.schedule(
+  '* * * * *',
+  async () => {
+    const baseUrl = process.env.EXPO_PUBLIC_HOST_URL;
 
-  if (!baseUrl || typeof baseUrl !== 'string') {
-    console.warn('⚠️ Skipping cron: EXPO_PUBLIC_HOST_URL is not defined or invalid.');
-    return;
-  }
+    if (!baseUrl) {
+      console.warn('⚠️ Skipping cron: EXPO_PUBLIC_HOST_URL is not defined.');
+      return;
+    }
 
-  const notificationUrl = `${baseUrl}/notifications`;
-  console.log(`⏰ Making request to: ${notificationUrl}`);
+    const notificationUrl = `${baseUrl}/notifications`;
+    console.log(`⏰ Making request to: ${notificationUrl}`);
 
-  axios.post(notificationUrl)
-    .then(response => {
+    try {
+      const response = await axios.post(notificationUrl);
       console.log('✅ Notification check completed:', response.data);
-    })
-    .catch(error => {
+    } catch (error) {
       console.error('❌ Error in cron job:', error.message);
-    });
-});
+    }
+  },
+  {
+    scheduled: true,
+    timezone: 'Europe/Sofia', 
+    localizedTime: false          
+  }
+);
 
 console.log('✅ Scheduler initialized...');
 

@@ -16,14 +16,14 @@ interface USER {
   name: string;
   email: string;
   image: string;
-    username: string; // ако не съществува, добави го
-  role: 'admin' | 'organizer' | 'user'; // добави това поле
+    username: string;
+  role: 'admin' | 'organizer' | 'user'; 
 }
 
 // Конфигуриране как се показват уведомления в foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: false,  // Ще показваме ръчно локална нотификация
+    shouldShowAlert: false, 
     shouldPlaySound: false,
     shouldSetBadge: false,
   }),
@@ -71,7 +71,7 @@ async function savePushToken(userId: number, token: string, deviceNotifications:
     const data = await res.json();
     console.log("Push token saved:", data.message);
   } catch (error) {
-    console.error("Error saving push token:", error);
+
   }
 }
 

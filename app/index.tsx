@@ -4,7 +4,7 @@ import axios from "axios";
 import { Redirect, useRouter } from "expo-router";
 import { onAuthStateChanged } from "firebase/auth";
 import { useContext } from "react";
-import { Text, View } from "react-native";
+import { LogBox, Text, View } from "react-native";
 
 export default function Index() {
   const {user, setUser} = useContext(AuthContext);

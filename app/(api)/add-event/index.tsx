@@ -32,7 +32,7 @@ export default function AddEvent() {
   const [mapLoading, setMapLoading] = useState(false);
   const router = useRouter();
   const [category, setCategory] = useState('');
-  const categories = ['Music', 'Education', 'Business', 'Technology', 'Sport', 'Art'];
+  const categories = ['Music', 'Education', 'Business', 'Technology', 'Sport', 'Art', 'Other'];
   const LOCATIONIQ_API_KEY = 'pk.ec03b49d319c22cc4569574c50e8a04d'; // Вашият API ключ
 
   const pickImage = async () => {
