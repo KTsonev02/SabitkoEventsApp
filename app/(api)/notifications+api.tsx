@@ -30,9 +30,9 @@ function formatTimeDiff(eventDate: string) {
   const minutes = diffMinutes - days * 24 * 60 - hours * 60;
 
   let parts = [];
-  if (days > 0) parts.push(`${days} ден${days > 1 ? 'а' : ''}`);
-  if (hours > 0) parts.push(`${hours} час${hours > 1 ? 'а' : ''}`);
-  if (minutes > 0) parts.push(`${minutes} минути`);
+  if (days > 0) parts.push(`${days} days${days > 1 ? 'а' : ''}`);
+  if (hours > 0) parts.push(`${hours} hours${hours > 1 ? 'а' : ''}`);
+  if (minutes > 0) parts.push(`${minutes} munutes`);
 
   return parts.join(' ');
 }
@@ -73,7 +73,7 @@ export async function POST() {
 
       if (check.rowCount === 0) {
         const timeLeft = formatTimeDiff(event_date);
-        const msg = `Напомняне: Събитието "${name}" започва след ${timeLeft}.`;
+        const msg = `Reminder: The event "${name}" starts after ${timeLeft}.`;
 
         let pushSent = false;
 

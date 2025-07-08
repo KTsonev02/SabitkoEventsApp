@@ -242,7 +242,7 @@ const buySeats = async () => {
         <Text style={styles.total}>Total price: {totalPrice.toFixed(2)} lv.</Text>
         <View style={{ width: 200, height: 150 }}>
           <Button
-            text={`Купи ${selectedSeats.length} билети`}
+            text={`Buy ${selectedSeats.length} tickets`}
             onPress={buySeats}
           />
         </View>
